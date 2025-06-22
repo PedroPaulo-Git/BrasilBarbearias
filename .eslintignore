@@ -1,0 +1,18 @@
+# Arquivos gerados pelo Prisma
+src/generated/
+*.js
+
+# Arquivos de build
+.next/
+out/
+dist/
+
+# Arquivos de dependências
+node_modules/
+
+# Arquivos de ambiente
+.env*
+!.env.example
+
+# Arquivos de log
+*.log 

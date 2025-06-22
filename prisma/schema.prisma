@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+model Owner {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shops     Shop[]
+
+  @@map("owners")
+}
+
+model Shop {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  address      String?
+  openTime     String        // Format: "HH:MM"
+  closeTime    String        // Format: "HH:MM"
+  serviceDuration Int        @default(60) // Duration in minutes
+  ownerId      String
+  owner        Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  appointments Appointment[]
+
+  @@map("shops")
+}
+
+model Appointment {
+  id           String   @id @default(cuid())
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  clientName   String
+  clientContact String  // Email or phone
+  date         DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([shopId, date]) // Prevent double booking
+  @@map("appointments")
+}
