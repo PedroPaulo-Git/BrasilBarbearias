@@ -244,10 +244,16 @@ export default function DashboardPage() {
                   <div className="pt-2">
                     <Button 
                       variant="outline" 
-                      className="w-full"
+                      className="w-full mb-2"
                       onClick={() => window.open(`/shops/${shop.slug}`, '_blank')}
                     >
                       Ver Página Pública
+                    </Button>
+                    <Button 
+                      className="w-full"
+                      onClick={() => router.push(`/dashboard/manage/${shop.slug}`)}
+                    >
+                      Gerenciar Barbearia
                     </Button>
                   </div>
                 </CardContent>

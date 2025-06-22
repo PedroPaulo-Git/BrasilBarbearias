@@ -49,6 +49,7 @@ model Appointment {
   clientName   String
   clientContact String  // Email or phone
   date         DateTime
+  status       String   @default("pending") // pending, confirmed, cancelled, completed
   createdAt    DateTime @default(now())
 
   @@unique([shopId, date]) // Prevent double booking

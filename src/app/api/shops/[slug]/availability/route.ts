@@ -30,11 +30,10 @@ export async function GET(
     }
 
     // Buscar agendamentos para a data
-    const startOfDay = new Date(date)
-    startOfDay.setHours(0, 0, 0, 0)
-    
-    const endOfDay = new Date(date)
-    endOfDay.setHours(23, 59, 59, 999)
+    const startOfDay = new Date(date + 'T00:00:00.000Z')
+    const endOfDay = new Date(date + 'T23:59:59.999Z')
+
+    console.log(`Buscando agendamentos entre: ${startOfDay.toISOString()} e ${endOfDay.toISOString()}`)
 
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -42,11 +41,20 @@ export async function GET(
         date: {
           gte: startOfDay,
           lte: endOfDay
+        },
+        status: {
+          in: ['confirmed', 'completed'] // Só bloqueia horários confirmados ou realizados
         }
       },
       select: {
-        date: true
+        date: true,
+        status: true
       }
+    })
+
+    console.log(`Agendamentos encontrados: ${appointments.length}`)
+    appointments.forEach(apt => {
+      console.log(`- ${apt.date.toISOString()} (${apt.status})`)
     })
 
     // Gerar todos os horários disponíveis
@@ -56,14 +64,20 @@ export async function GET(
       shop.serviceDuration
     )
 
-    // Filtrar horários ocupados
-    const bookedTimes = appointments.map((apt: { date: Date }) => 
-      apt.date.toTimeString().slice(0, 5)
-    )
+    // Filtrar horários ocupados - comparar HH:MM
+    const bookedTimes = appointments.map((apt: { date: Date }) => {
+      const hours = apt.date.getHours().toString().padStart(2, '0')
+      const minutes = apt.date.getMinutes().toString().padStart(2, '0')
+      return `${hours}:${minutes}`
+    })
 
-    const availableSlots = allTimeSlots.filter(
-      slot => !bookedTimes.includes(slot)
-    )
+    console.log(`Data: ${date}`)
+    console.log(`Horários ocupados: ${bookedTimes}`)
+    console.log(`Todos os horários: ${allTimeSlots}`)
+
+    const availableSlots = allTimeSlots.filter(slot => !bookedTimes.includes(slot))
+
+    console.log(`Horários disponíveis: ${availableSlots}`)
 
     return NextResponse.json({
       availableSlots,

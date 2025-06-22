@@ -64,7 +64,7 @@ export default function Home() {
       <div className="min-h-screen">
         {/* Hero Section - Foco no Cliente com CTA para Donos */}
         <section className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground py-24 md:py-32">
-          <div className="container mx-auto px-4 xl:px-24 2xl:px-64 text-center">
+          <div className="container mx-auto px-2 lg:px-12 xl:px-36 2xl:px-64 text-center">
             <h1 className="text-4xl md:text-6xl xl:text-7xl 2xl:text-7xl font-extrabold mb-6 drop-shadow-lg">
               A Barbearia Perfeita Espera por Você
             </h1>
