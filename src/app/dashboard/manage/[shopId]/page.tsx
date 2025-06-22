@@ -6,6 +6,16 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { 
   Calendar, 
   Clock, 
@@ -19,7 +29,9 @@ import {
   Filter,
   BarChart3,
   Settings,
-  MessageCircle
+  MessageCircle,
+  Trash2,
+  AlertTriangle
 } from "lucide-react"
 import { format, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -57,6 +69,12 @@ export default function ManageShopPage({ params }: { params: Promise<{ shopId: s
   const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('all')
   const [showCancelled, setShowCancelled] = useState(false)
   const [activeTab, setActiveTab] = useState<'appointments' | 'stats' | 'settings'>('appointments')
+  
+  // Estados para remoção em massa
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteMessage, setDeleteMessage] = useState("")
 
   useEffect(() => {
     const fetchData = async () => {
@@ -199,6 +217,65 @@ Obrigado! ✂️`
     const message = encodeURIComponent(getWhatsAppMessage(appointment, appointment.status))
     const whatsappUrl = `https://wa.me/${phone}?text=${message}`
     window.open(whatsappUrl, '_blank')
+  }
+
+  // Funções para remoção em massa
+  const handleStatusToggle = (status: string) => {
+    setSelectedStatuses(prev => {
+      if (prev.includes(status)) {
+        return prev.filter(s => s !== status)
+      } else {
+        return [...prev, status]
+      }
+    })
+  }
+
+  const handleDeleteAppointments = async () => {
+    if (selectedStatuses.length === 0) {
+      setDeleteMessage("Selecione pelo menos um tipo de agendamento para remover.")
+      return
+    }
+
+    setDeleting(true)
+    setDeleteMessage("")
+
+    try {
+      const { shopId: slug } = await params
+      const response = await fetch(`/api/shops/${slug}/appointments`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ statuses: selectedStatuses }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setDeleteMessage(data.message)
+        setSelectedStatuses([])
+        setShowDeleteDialog(false)
+        
+        // Recarregar agendamentos
+        const appointmentsResponse = await fetch(`/api/shops/${slug}/appointments?showCancelled=${showCancelled}`)
+        const appointmentsData = await appointmentsResponse.json()
+        
+        if (appointmentsResponse.ok) {
+          setAppointments(appointmentsData)
+        }
+      } else {
+        setDeleteMessage(data.error || "Erro ao remover agendamentos")
+      }
+    } catch (error) {
+      console.error("Erro ao remover agendamentos:", error)
+      setDeleteMessage("Erro interno do servidor")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const getStatusCount = (status: string) => {
+    return appointments.filter(a => a.status === status).length
   }
 
   const stats = {
@@ -494,16 +571,184 @@ Obrigado! ✂️`
         )}
 
         {activeTab === 'settings' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Configurações da Barbearia</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações avançadas da barbearia serão implementadas em breve.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* Remoção em Massa */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                  Remover Agendamentos em Massa
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Selecione os tipos de agendamentos que deseja remover permanentemente. Esta ação não pode ser desfeita.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="all"
+                        checked={selectedStatuses.includes('all')}
+                        onCheckedChange={() => handleStatusToggle('all')}
+                      />
+                      <label htmlFor="all" className="text-sm font-medium cursor-pointer">
+                        Todos os Agendamentos
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="pending"
+                        checked={selectedStatuses.includes('pending')}
+                        onCheckedChange={() => handleStatusToggle('pending')}
+                      />
+                      <label htmlFor="pending" className="text-sm font-medium cursor-pointer">
+                        Pendentes ({getStatusCount('pending')})
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="confirmed"
+                        checked={selectedStatuses.includes('confirmed')}
+                        onCheckedChange={() => handleStatusToggle('confirmed')}
+                      />
+                      <label htmlFor="confirmed" className="text-sm font-medium cursor-pointer">
+                        Confirmados ({getStatusCount('confirmed')})
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="completed"
+                        checked={selectedStatuses.includes('completed')}
+                        onCheckedChange={() => handleStatusToggle('completed')}
+                      />
+                      <label htmlFor="completed" className="text-sm font-medium cursor-pointer">
+                        Realizados ({getStatusCount('completed')})
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="cancelled"
+                        checked={selectedStatuses.includes('cancelled')}
+                        onCheckedChange={() => handleStatusToggle('cancelled')}
+                      />
+                      <label htmlFor="cancelled" className="text-sm font-medium cursor-pointer">
+                        Cancelados ({getStatusCount('cancelled')})
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedStatuses.length > 0 && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-800">
+                          Atenção: Esta ação é irreversível!
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          {selectedStatuses.includes('all') 
+                            ? `Todos os ${appointments.length} agendamentos serão removidos permanentemente.`
+                            : `${selectedStatuses.length} tipo(s) de agendamento selecionado(s) serão removidos.`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      disabled={selectedStatuses.length === 0}
+                      className="w-full sm:w-auto"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remover Agendamentos Selecionados
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        Confirmar Remoção
+                      </DialogTitle>
+                      <DialogDescription>
+                        Tem certeza que deseja remover permanentemente os agendamentos selecionados?
+                        Esta ação não pode ser desfeita.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Tipos selecionados:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {selectedStatuses.includes('all') && (
+                          <li>• Todos os agendamentos ({appointments.length})</li>
+                        )}
+                        {selectedStatuses.includes('pending') && !selectedStatuses.includes('all') && (
+                          <li>• Pendentes ({getStatusCount('pending')})</li>
+                        )}
+                        {selectedStatuses.includes('confirmed') && !selectedStatuses.includes('all') && (
+                          <li>• Confirmados ({getStatusCount('confirmed')})</li>
+                        )}
+                        {selectedStatuses.includes('completed') && !selectedStatuses.includes('all') && (
+                          <li>• Realizados ({getStatusCount('completed')})</li>
+                        )}
+                        {selectedStatuses.includes('cancelled') && !selectedStatuses.includes('all') && (
+                          <li>• Cancelados ({getStatusCount('cancelled')})</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    {deleteMessage && (
+                      <div className={`p-3 rounded-md text-sm ${
+                        deleteMessage.includes("sucesso") 
+                          ? "bg-green-100 text-green-800 border border-green-200" 
+                          : "bg-red-100 text-red-800 border border-red-200"
+                      }`}>
+                        {deleteMessage}
+                      </div>
+                    )}
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDeleteDialog(false)}
+                        disabled={deleting}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAppointments}
+                        disabled={deleting}
+                      >
+                        {deleting ? "Removendo..." : "Confirmar Remoção"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
+            {/* Outras Configurações */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Outras Configurações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Configurações avançadas da barbearia serão implementadas em breve.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
