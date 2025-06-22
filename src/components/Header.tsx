@@ -96,7 +96,7 @@ export default function Header() {
 
   return (
     <header className="bg-background/80 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b">
-      <div className="container mx-auto flex justify-between items-center h-16 px-4">
+      <div className="container mx-auto flex justify-between items-center py-2 px-4">
         <Link href="/" className="text-xl font-bold text-primary">
           <Image src={Logo} alt="BarbeariaApp" width={70} height={100} />
         </Link>

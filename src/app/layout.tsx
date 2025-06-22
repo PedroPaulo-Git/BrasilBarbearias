@@ -22,7 +22,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-background text-foreground`}>
         <SessionProvider>
           <Header />
-          <main className="pt-16">
+          <main className="pt-20">
             {children}
           </main>
           <Footer />

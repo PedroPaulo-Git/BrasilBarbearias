@@ -64,8 +64,8 @@ export default function Home() {
       <div className="min-h-screen">
         {/* Hero Section - Foco no Cliente com CTA para Donos */}
         <section className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground py-24 md:py-32">
-          <div className="container mx-auto px-4 text-center">
-            <h1 className="text-4xl md:text-6xl font-extrabold mb-6 drop-shadow-lg">
+          <div className="container mx-auto px-4 xl:px-24 2xl:px-64 text-center">
+            <h1 className="text-4xl md:text-6xl xl:text-7xl 2xl:text-7xl font-extrabold mb-6 drop-shadow-lg">
               A Barbearia Perfeita Espera por Você
             </h1>
             <p className="text-xl mb-8 max-w-3xl mx-auto text-primary-foreground/90">
@@ -151,7 +151,7 @@ export default function Home() {
               </div>
             </div>
             <Link href="/auth/signup">
-              <Button variant="default" className="h-auto whitespace-normal px-4 py-2 text-sm font-bold shadow-md transition-shadow hover:shadow-lg sm:px-6 sm:text-base">
+              <Button variant="default" className="h-auto whitespace-normal px-4 py-2 text-sm font-bold shadow-md transition-shadow hover:shadow-lg sm:px-6 sm:text-base cursor-pointer">
                 Cadastre seu Negócio Gratuitamente por 3 dias
               </Button>
             </Link>

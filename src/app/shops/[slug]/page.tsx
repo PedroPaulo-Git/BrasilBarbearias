@@ -105,7 +105,7 @@ export default function ShopPage({ params }: ShopPageProps) {
 
           {/* Formulário de Agendamento */}
           <div>
-            <Card>
+            <Card className="cursor-pointer">
               <CardHeader>
                 <CardTitle>Agendar Horário</CardTitle>
               </CardHeader>
