@@ -76,6 +76,10 @@ export default function ManageShopPage({ params }: { params: Promise<{ shopId: s
   const [deleting, setDeleting] = useState(false)
   const [deleteMessage, setDeleteMessage] = useState("")
 
+  // Dentro do componente principal:
+  const [removingShop, setRemovingShop] = useState(false);
+  const [removeShopMsg, setRemoveShopMsg] = useState("");
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -285,6 +289,26 @@ Obrigado! ✂️`
     cancelled: appointments.filter(a => a.status === 'cancelled').length,
     completed: appointments.filter(a => a.status === 'completed').length,
   }
+
+  const handleRemoveShop = async () => {
+    setRemovingShop(true);
+    setRemoveShopMsg("");
+    try {
+      const { shopId: slug } = await params;
+      const res = await fetch(`/api/shops/${slug}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setRemoveShopMsg("Barbearia removida com sucesso!");
+        setTimeout(() => router.push("/dashboard"), 1500);
+      } else {
+        setRemoveShopMsg(data.error || "Erro ao remover barbearia");
+      }
+    } catch {
+      setRemoveShopMsg("Erro ao remover barbearia");
+    } finally {
+      setRemovingShop(false);
+    }
+  };
 
   if (status === "loading") {
     return <div>Carregando...</div>
@@ -746,6 +770,31 @@ Obrigado! ✂️`
                 <p className="text-muted-foreground">
                   Configurações avançadas da barbearia serão implementadas em breve.
                 </p>
+              </CardContent>
+            </Card>
+
+            {/* Remoção de Barbearia */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                  Remover Barbearia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Esta ação é irreversível. Todos os dados da barbearia serão apagados.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleRemoveShop}
+                  disabled={removingShop}
+                >
+                  {removingShop ? "Removendo..." : "Remover Barbearia"}
+                </Button>
+                {removeShopMsg && (
+                  <div className="mt-2 text-sm text-muted-foreground">{removeShopMsg}</div>
+                )}
               </CardContent>
             </Card>
           </div>

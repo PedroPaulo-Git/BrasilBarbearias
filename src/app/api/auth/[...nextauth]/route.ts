@@ -2,8 +2,10 @@ import NextAuth from "next-auth/next"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { canCreateShop } from "@/lib/subscriptionUtils"
+import { NextResponse } from "next/server"
 
-export const authOptions: any = {
+const authOptions: any = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -16,19 +18,17 @@ export const authOptions: any = {
           return null
         }
 
-        const owner = await prisma.owner.findUnique({
-          where: {
-            email: credentials.email
-          }
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
         })
 
-        if (!owner) {
+        if (!user) {
           return null
         }
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
-          owner.password
+          user.password
         )
 
         if (!isPasswordValid) {
@@ -36,8 +36,8 @@ export const authOptions: any = {
         }
 
         return {
-          id: owner.id,
-          email: owner.email,
+          id: user.id,
+          email: user.email,
         }
       }
     })

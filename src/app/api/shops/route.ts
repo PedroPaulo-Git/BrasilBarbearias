@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
 import { generateUniqueSlug, isValidTimeFormat } from "@/lib/utils"
-import { authOptions } from "../auth/[...nextauth]/route"
+import { authOptions } from "@/lib/authOptions"
 
 // GET - Listar shops do owner autenticado
 export async function GET() {

@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -14,13 +14,17 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-model Owner {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  shops     Shop[]
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  name           String?
+  isAdmin        Boolean  @default(false)
+  shops          Shop[]
+  subscriptions  Subscription[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("owners")
 }
@@ -34,7 +38,7 @@ model Shop {
   closeTime    String        // Format: "HH:MM"
   serviceDuration Int        @default(60) // Duration in minutes
   ownerId      String
-  owner        Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
@@ -54,4 +58,33 @@ model Appointment {
 
   @@unique([shopId, date]) // Prevent double booking
   @@map("appointments")
+}
+
+model Plan {
+  id            String    @id
+  name          String    @unique // "Básico", "Intermediário", "Avançado"
+  price         Float
+  shopLimit     Int
+  trialDays     Int
+  createdAt     DateTime  @default(now())
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  planId                    String
+  status                    String    // e.g., "trialing", "active", "canceled", "expired", "unpaid"
+  trialStart                DateTime?
+  trialEnd                  DateTime?
+  currentPeriodStart        DateTime?
+  currentPeriodEnd          DateTime?
+  mercadoPagoSubscriptionId String?   @unique
+  mercadoPagoPreferenceId   String?   @unique
+  mercadoPagoPaymentId      String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  plan Plan @relation(fields: [planId], references: [id])
 }

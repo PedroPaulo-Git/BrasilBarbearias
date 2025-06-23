@@ -1,35 +1,38 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "./ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "./ui/dropdown-menu"
-import { Menu, User } from "lucide-react"
-import { useSession, signOut } from "next-auth/react"
-import Logo from "@/assets/LogoPernambucoBarbearias.png"
-import Image from "next/image"
+import Link from "next/link";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Menu, User } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import Logo from "@/assets/LogoPernambucoBarbearias.png";
+import Image from "next/image";
+import { useEffect } from "react";
 
 export default function Header() {
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession();
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
-  }
+    await signOut({ callbackUrl: "/" });
+  };
 
   const UserAvatar = () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 rounded-full cursor-pointer"
+        >
           <Avatar className="h-10 w-10">
-            <AvatarImage src={session?.user?.image || ''} alt="User" />
             <AvatarFallback>
               <User className="h-5 w-5" />
             </AvatarFallback>
@@ -40,7 +43,7 @@ export default function Header() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {session?.user?.name || 'Usuário'}
+              {session?.user?.name || "Usuário"}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {session?.user?.email}
@@ -60,7 +63,7 @@ export default function Header() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 
   const AuthButtons = () => (
     <div className="hidden md:flex items-center gap-4">
@@ -71,14 +74,18 @@ export default function Header() {
         <Link href="/auth/signup">Cadastrar Barbearia</Link>
       </Button>
     </div>
-  )
+  );
 
   const MobileAuthLinks = () => (
     <div className="border-t pt-4 mt-4 flex flex-col gap-4">
-      {status === 'authenticated' ? (
+      {status === "authenticated" ? (
         <>
-          <Link href="/dashboard" className="font-medium">Dashboard</Link>
-          <Link href="/profile" className="font-medium">Meu Perfil</Link>
+          <Link href="/dashboard" className="font-medium">
+            Dashboard
+          </Link>
+          <Link href="/profile" className="font-medium">
+            Meu Perfil
+          </Link>
           <Button onClick={handleLogout}>Sair</Button>
         </>
       ) : (
@@ -92,7 +99,10 @@ export default function Header() {
         </>
       )}
     </div>
-  )
+  );
+  useEffect(() => {
+    console.log(status);
+  }, [status]);
 
   return (
     <header className="bg-background/80 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b">
@@ -100,26 +110,47 @@ export default function Header() {
         <Link href="/" className="text-xl font-bold text-primary">
           <Image src={Logo} alt="BarbeariaApp" width={70} height={100} />
         </Link>
-        
+
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          <Link
+            href="/#features"
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
             Funcionalidades
           </Link>
-          <Link href="/shops" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          {status === "authenticated" && (
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Gerenciar Barbearias
+            </Link>
+          )}
+          <Link
+            href="/shops"
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
             Ver Barbearias
           </Link>
-          <Link href="/#contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          <Link
+            href="/#contact"
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
             Contato
           </Link>
         </nav>
 
-        {status === 'loading' ? (
+        {status === "loading" ? (
           <div className="h-10 w-10 bg-muted rounded-full animate-pulse"></div>
-        ) : status === 'authenticated' ? (
-          <UserAvatar />
+        ) : status === "authenticated" ? (
+          <div className="hidden md:block">
+            <UserAvatar />
+          </div>
         ) : (
-          <AuthButtons />
+          <div className="hidden md:block">
+            <AuthButtons />
+          </div>
         )}
 
         {/* Mobile Navigation */}
@@ -131,18 +162,41 @@ export default function Header() {
                 <span className="sr-only">Abrir menu</span>
               </Button>
             </SheetTrigger>
+            
             <SheetContent side="right">
               <div className="grid gap-4 py-6 px-4">
                 <Link href="/" className="text-lg font-bold text-primary mb-4">
-                  <Image src={Logo} alt="BarbeariaApp" width={70} height={100} />
+                  <Image
+                    src={Logo}
+                    alt="BarbeariaApp"
+                    width={70}
+                    height={100}
+                  />
                 </Link>
-                <Link href="/#features" className="text-base font-medium text-muted-foreground hover:text-primary transition-colors">
+                <Link
+                  href="/#features"
+                  className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
                   Funcionalidades
                 </Link>
-                <Link href="/shops" className="text-base font-medium text-muted-foreground hover:text-primary transition-colors">
+                {status === "authenticated" && (
+                  <Link
+                    href="/dashboard"
+                    className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Ver Minhas Barbearias
+                  </Link>
+                )}
+                <Link
+                  href="/shops"
+                  className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
                   Ver Barbearias
                 </Link>
-                <Link href="/#contact" className="text-base font-medium text-muted-foreground hover:text-primary transition-colors">
+                <Link
+                  href="/#contact"
+                  className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
                   Contato
                 </Link>
                 <MobileAuthLinks />
@@ -152,5 +206,5 @@ export default function Header() {
         </div>
       </div>
     </header>
-  )
-} 
+  );
+}

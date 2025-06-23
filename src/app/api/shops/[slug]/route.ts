@@ -37,4 +37,38 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await params
+
+    // (Opcional) Verifique se o usuário autenticado é dono da barbearia
+
+    const shop = await prisma.shop.findUnique({
+      where: { slug }
+    });
+
+    if (!shop) {
+      return NextResponse.json(
+        { error: "Barbearia não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.shop.delete({
+      where: { slug }
+    });
+
+    return NextResponse.json({ message: "Barbearia removida com sucesso" });
+  } catch (error) {
+    console.error("Erro ao remover barbearia:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
 } 

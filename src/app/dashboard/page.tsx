@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Clock, MapPin, Users } from "lucide-react"
+import Link from "next/link"
 
 interface Shop {
   id: string
@@ -36,6 +37,9 @@ export default function DashboardPage() {
     serviceDuration: 60
   })
   const [submitting, setSubmitting] = useState(false)
+  const [plan, setPlan] = useState<any>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeMsg, setRemoveMsg] = useState("");
 
   const fetchShops = async () => {
     try {
@@ -54,6 +58,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchShops()
+    // Buscar plano do usuário pela NOVA rota
+    fetch("/api/user/subscribe").then(res => res.json()).then(setPlan)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,19 +106,73 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
+        <div className="flex flex-col md:flex-row justify-between items-start mb-6">
+          <div className="flex-1">
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">
-              Gerencie suas barbearias
+              Gerencie suas barbearias e sua assinatura.
             </p>
           </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Barbearia
+          <Button
+            onClick={() => setShowForm(true)}
+            disabled={!plan || shops.length >= plan.shopLimit}
+            className="mt-4 md:mt-0"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Barbearia
           </Button>
         </div>
 
+        <div className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Seu Plano</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {plan ? (
+                plan.name !== "Nenhum plano" ? (
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-lg">
+                        {plan.name}{" "}
+                        <span className="text-sm font-normal px-2 py-1 rounded-full bg-primary/10 text-primary">
+                          {plan.status}
+                        </span>
+                      </p>
+                      {(plan.trialEnd || plan.paymentEnd) && (
+                        <p className="text-sm text-muted-foreground">
+                          Acesso até:{" "}
+                          {new Date(
+                            plan.trialEnd || plan.paymentEnd
+                          ).toLocaleDateString()}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Limite de barbearias: {shops.length} / {plan.shopLimit}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" asChild className="mt-4 md:mt-0 self-start md:self-center">
+                      <Link href="/plans">Gerenciar Plano</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">Você ainda não assinou um plano.</p>
+                    <Button size="sm" asChild>
+                      <Link href="/plans">Ver Planos</Link>
+                    </Button>
+                  </div>
+                )
+              ) : (
+                 <div className="flex items-center justify-between">
+                    <p className="font-medium">Carregando informações do plano...</p>
+                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Formulário de nova barbearia só aparece se permitido pelo plano */}
         {showForm && (
           <Card className="mb-8">
             <CardHeader>
@@ -205,9 +265,8 @@ export default function DashboardPage() {
               <p className="text-muted-foreground mb-4">
                 Você ainda não tem barbearias cadastradas.
               </p>
-              <Button onClick={() => setShowForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeira Barbearia
+              <Button asChild>
+                <Link href="/plans">Ver Planos</Link>
               </Button>
             </CardContent>
           </Card>
@@ -223,24 +282,21 @@ export default function DashboardPage() {
                     </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent>
                   {shop.address && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <MapPin className="h-4 w-4" />
                       <span>{shop.address}</span>
                     </div>
                   )}
-                  
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     <span>{shop.openTime} - {shop.closeTime}</span>
                   </div>
-
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
                     <span>{shop.serviceDuration} min por serviço</span>
                   </div>
-
                   <div className="pt-2">
                     <Button 
                       variant="outline" 

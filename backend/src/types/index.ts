@@ -45,6 +45,10 @@ export interface AvailabilityQuery {
 // Extensões do Express
 export interface AuthenticatedRequest extends Request {
   sessionToken?: string;
+  user?: {
+    id: string;
+    // adicione outros campos se necessário
+  };
 }
 
 // Tipos para controllers
