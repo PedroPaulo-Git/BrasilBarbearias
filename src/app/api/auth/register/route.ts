@@ -28,44 +28,18 @@ export async function POST(request: NextRequest) {
     // Hash da senha
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Encontra o plano para o trial (o mais barato)
-    const trialPlan = await prisma.plan.findFirst({
-      orderBy: {
-        price: 'asc',
-      },
-    })
-
-    if (!trialPlan) {
-      console.error("Nenhum plano encontrado no banco de dados. Não é possível atribuir o trial.")
-      return NextResponse.json(
-        { error: "Erro de configuração do servidor: nenhum plano encontrado." },
-        { status: 500 }
-      )
-    }
-
-    const trialEndDate = new Date()
-    trialEndDate.setDate(trialEndDate.getDate() + trialPlan.trialDays)
-
-    // Criar user e a subscription trial em uma transação
+    // Criar user
     const user = await prisma.user.create({
       data: {
         email,
         name,
         password: hashedPassword,
-        subscriptions: {
-          create: {
-            planId: trialPlan.id,
-            status: 'trialing',
-            trialStart: new Date(),
-            trialEnd: trialEndDate,
-          },
-        },
       }
     })
 
     return NextResponse.json(
       {
-        message: "Usuário criado com sucesso com um período de teste.",
+        message: "Usuário criado com sucesso.",
         user: {
           id: user.id,
           email: user.email

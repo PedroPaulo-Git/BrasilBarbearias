@@ -14,7 +14,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Menu, User } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-import Logo from "@/assets/LogoPernambucoBarbearias.png";
+import Logo from "@/assets/LogoSemFundo.png";
 import Image from "next/image";
 import { useEffect } from "react";
 

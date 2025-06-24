@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Clock, MapPin, Users } from "lucide-react"
+import { GET } from '@/app/api/user/subscribe/route'
 import Link from "next/link"
 
 interface Shop {
@@ -115,7 +116,7 @@ export default function DashboardPage() {
           </div>
           <Button
             onClick={() => setShowForm(true)}
-            disabled={!plan || shops.length >= plan.shopLimit}
+            disabled={!plan || plan.name === "Nenhum plano" || shops.length >= plan.shopLimit}
             className="mt-4 md:mt-0"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -129,8 +130,11 @@ export default function DashboardPage() {
               <CardTitle>Seu Plano</CardTitle>
             </CardHeader>
             <CardContent>
-              {plan ? (
-                plan.name !== "Nenhum plano" ? (
+              {!plan ? (
+                 <div className="flex items-center justify-between">
+                    <p className="font-medium">Carregando informações do plano...</p>
+                 </div>
+              ) : plan.name !== "Nenhum plano" ? (
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <p className="font-medium text-lg">
@@ -139,12 +143,10 @@ export default function DashboardPage() {
                           {plan.status}
                         </span>
                       </p>
-                      {(plan.trialEnd || plan.paymentEnd) && (
+                      {plan.paymentEnd && (
                         <p className="text-sm text-muted-foreground">
                           Acesso até:{" "}
-                          {new Date(
-                            plan.trialEnd || plan.paymentEnd
-                          ).toLocaleDateString()}
+                          {new Date(plan.paymentEnd).toLocaleDateString()}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground mt-1">
@@ -155,18 +157,16 @@ export default function DashboardPage() {
                       <Link href="/plans">Gerenciar Plano</Link>
                     </Button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">Você ainda não assinou um plano.</p>
-                    <Button size="sm" asChild>
+              ) : (
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+                    <div>
+                      <p className="font-medium">Desbloqueie sua agenda automática.</p>
+                      <p className="text-sm text-muted-foreground mt-1">Assine um plano para ter seu link de agendamento, controle de clientes e muito mais.</p>
+                    </div>
+                    <Button size="sm" asChild className="mt-4 md:mt-0 self-start md:self-center">
                       <Link href="/plans">Ver Planos</Link>
                     </Button>
                   </div>
-                )
-              ) : (
-                 <div className="flex items-center justify-between">
-                    <p className="font-medium">Carregando informações do plano...</p>
-                 </div>
               )}
             </CardContent>
           </Card>
@@ -262,12 +262,32 @@ export default function DashboardPage() {
         ) : shops.length === 0 ? (
           <Card>
             <CardContent className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                Você ainda não tem barbearias cadastradas.
-              </p>
-              <Button asChild>
-                <Link href="/plans">Ver Planos</Link>
-              </Button>
+              {!plan ? (
+                <p>Verificando seu plano...</p>
+              ) : plan.name !== "Nenhum plano" ? (
+                <>
+                  <p className="text-muted-foreground mb-4">
+                    Você já tem um plano! Adicione sua primeira barbearia para começar.
+                  </p>
+                  <Button onClick={() => setShowForm(true)}>
+                    Adicionar Barbearia
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground mb-4">
+                    Sua jornada começa com um plano. Assine para cadastrar sua barbearia e ter acesso ao seu link de agendamento, painel de controle e todas as ferramentas de crescimento.
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <Button asChild>
+                      <Link href="/plans">Ver Planos</Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link href="/#features">Conhecer Funcionalidades</Link>
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (

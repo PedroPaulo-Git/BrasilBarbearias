@@ -9,8 +9,8 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "BarbeariaApp - Agendamento para Barbearias",
-  description: "Gerencie sua barbearia de forma simples e eficiente. Agendamentos online, controle de horários e muito mais.",
+  title: "Brasil Barbearias - Plataforma de Agendamento para Barbearias",
+  description: "Gerencie sua barbearia de forma profissional. Agendamentos online, controle de horários e atendimento moderno em uma única plataforma pensada para barbeiros de todo o Brasil.",
 };
 
 export default function RootLayout({

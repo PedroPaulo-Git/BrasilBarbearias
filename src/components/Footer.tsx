@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Github, Twitter, Facebook } from "lucide-react"
-import Logo from "@/assets/LogoPernambucoBarbearias.png"
+import Logo from "@/assets/LogoSemFundo.png"
 import Image from "next/image"
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -12,7 +12,7 @@ export default function Footer() {
           {/* About Section */}
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-4">
-              <Image src={Logo} alt="Pernambuco Barbearias" width={100} height={100} />
+              <Image src={Logo} alt="Sua Barbearia App" width={100} height={100} />
             </h3>
             <p className="text-sm text-muted-foreground">
               A solução completa para gerenciar sua barbearia. 

@@ -21,16 +21,19 @@ export async function GET() {
       where: { email: session.user.email },
       include: { subscriptions: { include: { plan: true } } },
     });
-
+    
+    if (!user || !user.subscriptions || user.subscriptions.length === 0) {
+      return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
+    }
+    console.log(user)
     const sub: any = user?.subscriptions?.[0];
-    if (!sub) {
+    if (!sub || !sub.plan) {
       return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
     }
 
     return NextResponse.json({
       name: sub.plan.name,
       status: sub.status,
-      trialEnd: sub.trialEnd,
       paymentEnd: sub.currentPeriodEnd,
       shopLimit: sub.plan.shopLimit,
     });

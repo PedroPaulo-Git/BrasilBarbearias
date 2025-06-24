@@ -11,8 +11,8 @@ import { PaymentForm } from "@/components/PaymentForm";
 import { useTransition } from 'react';
 
 interface PlansViewProps {
-  plans: Plan[];
-  userSubscription: Partial<Subscription> | null;
+  plans: (Plan & { price: number })[];
+  userSubscription: (Partial<Subscription> & { plan?: Partial<Plan> & { price?: number } }) | null;
 }
 
 export function PlansView({ plans, userSubscription }: PlansViewProps) {
@@ -39,45 +39,67 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
     });
   };
 
+  const currentPlanPrice = userSubscription?.plan?.price ?? -1;
+  const hasActiveSubscription = userSubscription?.status === 'active';
+
   return (
     <div className="container mx-auto py-12">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold">Escolha o plano perfeito para você</h1>
-        <p className="text-lg text-muted-foreground mt-2">Comece com um teste gratuito. Cancele quando quiser.</p>
+        <h1 className="text-4xl font-bold">
+          {hasActiveSubscription ? "Melhore seu plano" : "Escolha o plano perfeito para você"}
+        </h1>
+        <p className="text-lg text-muted-foreground mt-2">
+          {hasActiveSubscription
+            ? "Aproveite mais benefícios e eleve sua gestão."
+            : "Acesse todas as nossas ferramentas e impulsione seu negócio."}
+        </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {plans.map((plan) => (
-          <Card key={plan.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle>{plan.name}</CardTitle>
-              <CardDescription>
-                <span className="text-3xl font-bold">R$ {plan.price.toFixed(2)}</span>/mês
-                {plan.trialDays > 0 && <span className="text-sm"> (Teste gratuito de {plan.trialDays} dias)</span>}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <ul className="space-y-2">
-                <li className="flex items-center">
-                  <Check className="w-4 h-4 mr-2 text-green-500" />
-                  Até {plan.shopLimit} barbearia(s)
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-4 h-4 mr-2 text-green-500" />
-                  Agendamentos Online
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                onClick={() => handleSubscriptionClick(plan)} 
-                className="w-full" 
-                disabled={userSubscription?.planId === plan.id && userSubscription?.status === 'active'}
-              >
-                {userSubscription?.planId === plan.id && userSubscription?.status === 'active' ? 'Plano Atual' : 'Assinar Agora'}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+        {plans.map((plan) => {
+          const isCurrentPlan = userSubscription?.planId === plan.id && hasActiveSubscription;
+          let buttonText = 'Assinar Agora';
+          if (hasActiveSubscription) {
+            if (isCurrentPlan) {
+              buttonText = 'Plano Atual';
+            } else if (plan.price > currentPlanPrice) {
+              buttonText = 'Fazer Upgrade';
+            } else {
+              buttonText = 'Fazer Downgrade';
+            }
+          }
+
+          return (
+            <Card key={plan.id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle>{plan.name}</CardTitle>
+                <CardDescription>
+                  <span className="text-3xl font-bold">R$ {plan.price.toFixed(2)}</span>/mês
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <ul className="space-y-2">
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Até {plan.shopLimit} barbearia(s)
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Agendamentos Online
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={() => handleSubscriptionClick(plan)} 
+                  className="w-full" 
+                  disabled={isCurrentPlan}
+                >
+                  {buttonText}
+                </Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
       
       <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>

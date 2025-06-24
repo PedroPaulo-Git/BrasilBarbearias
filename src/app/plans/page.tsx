@@ -18,7 +18,16 @@ export default async function PlansPage() {
         redirect('/auth/signin?callbackUrl=/plans');
     }
 
-    const plans = await prisma.plan.findMany({ orderBy: { price: 'asc' } });
+    const plans = await prisma.plan.findMany({ 
+        select: {
+            id: true,
+            name: true,
+            price: true,
+            shopLimit: true,
+            createdAt: true,
+        },
+        orderBy: { price: 'asc' } 
+    });
     
     const userSubscription = await prisma.subscription.findUnique({
         where: { userId: session.user.id },

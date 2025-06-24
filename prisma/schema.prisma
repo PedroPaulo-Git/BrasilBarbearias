@@ -65,7 +65,6 @@ model Plan {
   name          String    @unique // "Básico", "Intermediário", "Avançado"
   price         Float
   shopLimit     Int
-  trialDays     Int
   createdAt     DateTime  @default(now())
   subscriptions Subscription[]
 }
@@ -74,9 +73,7 @@ model Subscription {
   id                        String    @id @default(cuid())
   userId                    String    @unique
   planId                    String
-  status                    String    // e.g., "trialing", "active", "canceled", "expired", "unpaid"
-  trialStart                DateTime?
-  trialEnd                  DateTime?
+  status                    String    // e.g., "active", "canceled", "expired", "unpaid"
   currentPeriodStart        DateTime?
   currentPeriodEnd          DateTime?
   mercadoPagoSubscriptionId String?   @unique
