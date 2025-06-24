@@ -123,23 +123,38 @@ Acesse [http://localhost:3000](http://localhost:3000) para ver a aplicação.
    - Contato (email ou telefone)
    - Data e horário desejado
 
-## 🏗️ Estrutura do Projeto
+## 🏗️ Estrutura do Projeto (Monorepo)
 
 ```
-src/
-├── app/                    # App Router (Next.js 14)
-│   ├── api/               # API Routes
-│   │   ├── auth/          # Autenticação
-│   │   ├── shops/         # CRUD de barbearias
-│   │   └── appointments/  # Agendamentos
-│   ├── auth/              # Páginas de autenticação
-│   ├── dashboard/         # Dashboard do proprietário
-│   └── shops/             # Páginas públicas
-├── components/            # Componentes React
-│   ├── ui/               # Componentes shadcn/ui
-│   └── ...               # Componentes customizados
-├── lib/                  # Utilitários e configurações
-└── types/                # Tipos TypeScript
+/
+├── backend/                # API Node.js/Express para pagamentos e lógica de negócios
+│   ├── src/
+│   │   ├── controllers/    # Controladores (lógica das rotas)
+│   │   ├── services/       # Serviços (ex: MercadoPagoService)
+│   │   └── routes/         # Definição das rotas da API
+│   └── package.json
+│
+├── prisma/                 # Configuração do Prisma ORM
+│   ├── migrations/         # Histórico de migrações do banco
+│   └── schema.prisma       # Schema do banco de dados (fonte da verdade)
+│
+├── public/                 # Arquivos estáticos (imagens, etc.)
+│
+├── src/                    # Código-fonte do Frontend (Next.js)
+│   ├── app/                # App Router
+│   │   ├── api/            # API Routes do Next.js (auth, webhooks, etc.)
+│   │   ├── auth/           # Páginas de autenticação
+│   │   ├── dashboard/      # Dashboard do usuário logado
+│   │   ├── plans/          # Página de planos e checkout
+│   │   ├── profile/        # Perfil do usuário para gerenciar assinatura
+│   │   └── shops/          # Páginas públicas das barbearias
+│   ├── components/         # Componentes React reutilizáveis
+│   │   └── ui/             # Componentes base do shadcn/ui
+│   ├── lib/                # Funções utilitárias (authOptions, prisma client)
+│   └── types/              # Definições de tipos globais
+│
+├── package.json            # Dependências do Frontend
+└── README.md               # O arquivo que você está lendo
 ```
 
 ## 🔧 Configuração para Produção
@@ -241,16 +256,55 @@ Se você encontrar algum problema ou tiver dúvidas:
 3. Verifique as variáveis de ambiente
 4. Abra uma issue no GitHub
 
-## 🎯 Roadmap
+## ✅ Roadmap de Funcionalidades Concluídas
 
-- [x] MVP básico funcional
-- [ ] Sistema de notificações
-- [ ] Dashboard avançado com relatórios
-- [ ] API pública para integrações
-- [ ] App mobile (React Native)
-- [ ] Sistema de pagamentos
-- [ ] Integração com WhatsApp Business
+Esta seção resume as principais funcionalidades e marcos alcançados no projeto.
+
+### Arquitetura e Estrutura
+- [x] **Arquitetura Monorepo**: O projeto foi estruturado em um monorepo, separando o **Frontend (Next.js)** do **Backend (Node.js/Express)** para melhor escalabilidade e manutenção.
+- [x] **Banco de Dados com Prisma**: Utilização do Prisma ORM para modelagem de dados, migrações e acesso ao banco de dados PostgreSQL.
+
+### Funcionalidades Core
+- [x] **Sistema de Agendamento**: Mecanismo completo para clientes agendarem horários, com verificação de disponibilidade em tempo real.
+- [x] **Gestão de Barbearias**: Proprietários podem criar, editar e remover suas barbearias através de um dashboard.
+- [x] **Páginas Públicas para Barbearias**: Cada barbearia possui uma página pública e personalizada para receber agendamentos.
+- [x] **Autenticação de Usuários**: Sistema de login e registro para proprietários de barbearias usando NextAuth.
+
+### Modelo SaaS e Pagamentos
+- [x] **Sistema de Planos e Assinaturas**: Implementação de um modelo SaaS com diferentes níveis de planos (Básico, Intermediário, Avançado).
+- [x] **Integração com Mercado Pago**: Checkout de pagamento para os planos de assinatura, com backend para gerar preferências de pagamento.
+- [x] **Webhook de Pagamento**: Rota de webhook para receber e processar notificações de status de pagamento do Mercado Pago.
+- [x] **Perfil de Assinante**: Página onde o usuário pode visualizar o status de sua assinatura.
+
+### Melhorias e Correções
+- [x] **Gerenciamento Avançado de Agendamentos**: Funcionalidade para donos de barbearia removerem agendamentos em massa por status.
+- [x] **Correção de Bug de Fuso Horário**: Resolvido um problema crítico que exibia todos os horários como disponíveis, garantindo que a consulta de disponibilidade seja precisa.
+- [x] **Correção de Bug de Sessão**: Solucionado o problema onde o nome do usuário não era exibido corretamente no Header após o login.
+- [x] **UI Dinâmica na Home**: A página inicial agora exibe conteúdo diferenciado para usuários assinantes e não assinantes.
 
 ---
+
+## 🎯 Roadmap de Melhorias Futuras
+
+Aqui estão algumas das funcionalidades e melhorias planejadas para o futuro do projeto:
+
+### Módulo de Notificações
+- [ ] **Notificações por Email/SMS**: Envio de confirmações, lembretes e cancelamentos de agendamento.
+- [ ] **Integração com WhatsApp Business**: Para automação de mensagens e agendamentos.
+
+### Dashboard Avançado
+- [ ] **Relatórios e Analytics**: Gráficos de faturamento, número de clientes, serviços mais populares, etc.
+- [ ] **Gestão de Clientes (CRM)**: Histórico de agendamentos e preferências por cliente.
+- [ ] **Gestão de Equipe**: Múltiplos barbeiros por barbearia, cada um com sua própria agenda.
+
+### Funcionalidades da Plataforma
+- [ ] **Múltiplos Serviços**: Capacidade de cadastrar diferentes tipos de serviço com durações e preços variados.
+- [ ] **Sistema de Avaliações**: Clientes poderão avaliar o serviço e a barbearia.
+- [ ] **API Pública**: Para permitir que outros sistemas se integrem à plataforma.
+
+### Melhorias de UX/UI
+- [ ] **PWA (Progressive Web App)**: Melhorar a experiência mobile, tornando o app "instalável".
+- [ ] **Internacionalização (i18n)**: Suporte a múltiplos idiomas.
+- [ ] **Temas Personalizáveis**: Permitir que donos de barbearia personalizem a aparência de suas páginas públicas.
 
 Desenvolvido com ❤️ para facilitar a gestão de barbearias
