@@ -30,6 +30,9 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
+            <strong>Nome:</strong> {session?.user?.name}
+          </div>
+          <div className="mb-4">
             <strong>Email:</strong> {session?.user?.email}
           </div>
           <div className="mb-4">

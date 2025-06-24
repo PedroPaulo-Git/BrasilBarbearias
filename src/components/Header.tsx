@@ -16,9 +16,10 @@ import { Menu, User } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Logo from "@/assets/LogoSemFundo.png";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Header() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: session, status } = useSession();
 
   const handleLogout = async () => {
@@ -52,7 +53,7 @@ export default function Header() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/dashboard">Gerenciar Barbearias</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">
           <Link href="/profile">Meu Perfil</Link>
@@ -80,28 +81,47 @@ export default function Header() {
     <div className="border-t pt-4 mt-4 flex flex-col gap-4">
       {status === "authenticated" ? (
         <>
-          <Link href="/dashboard" className="font-medium">
-            Dashboard
+          <Link
+            href="/dashboard"
+            className="font-medium"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Painel
           </Link>
-          <Link href="/profile" className="font-medium">
-            Meu Perfil
+          <Link
+            href="/profile"
+            className="font-medium"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Minha Conta
           </Link>
-          <Button onClick={handleLogout}>Sair</Button>
+          <Button
+            onClick={() => {
+              handleLogout();
+              setIsMenuOpen(false);
+            }}
+          >
+            Sair
+          </Button>
         </>
       ) : (
         <>
           <Button variant="ghost" asChild>
-            <Link href="/auth/signin">Entrar</Link>
+            <Link href="/auth/signin" onClick={() => setIsMenuOpen(false)}>
+              Entrar
+            </Link>
           </Button>
           <Button asChild>
-            <Link href="/auth/signup">Cadastrar Barbearia</Link>
+            <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)}>
+              Cadastrar Barbearia
+            </Link>
           </Button>
         </>
       )}
     </div>
   );
   useEffect(() => {
-    console.log(status);
+    console.log("User status:", status);
   }, [status]);
 
   return (
@@ -155,7 +175,7 @@ export default function Header() {
 
         {/* Mobile Navigation */}
         <div className="md:hidden">
-          <Sheet>
+          <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon">
                 <Menu className="h-5 w-5" />
@@ -165,7 +185,11 @@ export default function Header() {
             
             <SheetContent side="right">
               <div className="grid gap-4 py-6 px-4">
-                <Link href="/" className="text-lg font-bold text-primary mb-4">
+                <Link
+                  href="/"
+                  className="text-lg font-bold text-primary mb-4"
+                  onClick={() => setIsMenuOpen(false)}
+                >
                   <Image
                     src={Logo}
                     alt="BarbeariaApp"
@@ -176,6 +200,7 @@ export default function Header() {
                 <Link
                   href="/#features"
                   className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Funcionalidades
                 </Link>
@@ -183,6 +208,7 @@ export default function Header() {
                   <Link
                     href="/dashboard"
                     className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     Ver Minhas Barbearias
                   </Link>
@@ -190,12 +216,14 @@ export default function Header() {
                 <Link
                   href="/shops"
                   className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Ver Barbearias
                 </Link>
                 <Link
                   href="/#contact"
                   className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Contato
                 </Link>

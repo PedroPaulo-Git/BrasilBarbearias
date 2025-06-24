@@ -38,6 +38,7 @@ const authOptions: any = {
         return {
           id: user.id,
           email: user.email,
+          name: user.name, 
         }
       }
     })
@@ -52,18 +53,22 @@ const authOptions: any = {
     async jwt({ token, user }: { token: any, user: any }) {
       if (user) {
         token.id = user.id
+        token.name = user.name  // ← ADICIONE ESTA LINHA
+        token.email = user.email // ← ADICIONE ESTA LINHA (boa prática)
       }
       return token
     },
     async session({ session, token }: { session: any, token: any }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string
+        session.user.id = token.id as string
+        session.user.name = token.name as string // ← ADICIONE ESTA LINHA
+        session.user.email = token.email as string // ← ADICIONE ESTA LINHA
       }
       return session
     }
   }
 }
-
+// import { authOptions } from "@/lib/authOptions"
 const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST } 

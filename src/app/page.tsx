@@ -1,11 +1,42 @@
+// "use client";
+
+// import { useState, useEffect } from "react";
+// import {
+//   Search,
+//   Calendar,
+//   Clock,
+//   Smartphone,
+//   Loader2,
+//   CheckCircle,
+//   Users,
+//   BarChart,
+//   Share2,
+//   Star,
+//   MapPin,
+//   TrendingUp,
+//   Rocket,
+//   BarChartHorizontal,
+//   HelpCircle,
+// } from "lucide-react";
+// import {
+//   Accordion,
+//   AccordionContent,
+//   AccordionItem,
+//   AccordionTrigger,
+// } from "@/components/ui/accordion";
+// import { CardShop } from "@/components/CardShop";
+// import { Button } from "@/components/ui/button";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import Link from "next/link";
+// import { useRouter } from "next/navigation";
+// import { useMemo, FormEvent } from "react";
+
 "use client";
 
 import { useState, useEffect } from "react";
 import {
   Search,
   Calendar,
-  Clock,
-  Smartphone,
   Loader2,
   CheckCircle,
   Users,
@@ -16,6 +47,7 @@ import {
   TrendingUp,
   Rocket,
   BarChartHorizontal,
+  HelpCircle,
 } from "lucide-react";
 import {
   Accordion,
@@ -29,6 +61,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, FormEvent } from "react";
+import { useSession } from "next-auth/react";
+import { SubscribedHomeView } from "@/components/SubscribedHomeView";
 
 interface Shop {
   id: string;
@@ -44,6 +78,9 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { data: session, status } = useSession();
+  const [plan, setPlan] = useState<any>(null);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(true);
 
   useEffect(() => {
     const fetchShops = async () => {
@@ -70,6 +107,32 @@ export default function Home() {
     fetchShops();
   }, []);
 
+  useEffect(() => {
+    if (status === "authenticated") {
+      setIsLoadingPlan(true);
+      const fetchPlan = async () => {
+        try {
+          const res = await fetch("/api/user/plan");
+          if (res.ok) {
+            const data = await res.json();
+            setPlan(data);
+          } else {
+            setPlan(null);
+          }
+        } catch (error) {
+          console.error("Failed to fetch user plan", error);
+          setPlan(null);
+        } finally {
+          setIsLoadingPlan(false);
+        }
+      };
+      fetchPlan();
+    } else if (status !== "loading") {
+      setIsLoadingPlan(false);
+      setPlan(null);
+    }
+  }, [status]);
+
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!searchTerm.trim()) {
@@ -80,6 +143,19 @@ export default function Home() {
   };
 
   const featuredShops = useMemo(() => shops.slice(0, 6), [shops]);
+  const isSubscribed = status === "authenticated" && plan?.status === "active";
+
+  if (isLoading || (status === "loading" && isLoadingPlan)) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (isSubscribed) {
+    return <SubscribedHomeView />;
+  }
 
   return (
     <>
@@ -389,7 +465,8 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <div className="max-w-3xl mx-auto my-12">
+        <div className="max-w-3xl mx-auto my-12 px-10 md:px-0">
+          <h1 className="text-2xl font-bold mb-4"><HelpCircle className="w-6 h-6 inline mr-2" />Tire suas dúvidas</h1>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
               <AccordionTrigger className="text-lg text-left">
@@ -485,6 +562,7 @@ export default function Home() {
                 Nada de instalar aplicativo. Você acessa tudo direto pelo
                 navegador, seja no celular, tablet ou computador. É leve, rápido
                 e funciona perfeitamente em qualquer dispositivo.
+              
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-7">
@@ -499,12 +577,7 @@ export default function Home() {
             </AccordionItem>
           </Accordion>
         </div>
-        <footer className="border-t">
-          <div className="container mx-auto py-6 px-4 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Pernambuco Barbearias. Todos os
-            direitos reservados.
-          </div>
-        </footer>
+       
       </div>
     </>
   );

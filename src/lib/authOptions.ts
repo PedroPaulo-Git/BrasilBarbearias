@@ -38,11 +38,15 @@ export const authOptions = {
           return null
         }
 
+        if (!user.name) {
+          return null
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-        }
+        } as User;
       }
     })
   ],
@@ -55,14 +59,22 @@ export const authOptions = {
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: User & { id: string } }) {
       if (user) {
+
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
       }
+   
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.name = token.name;
+      if (token) {
+       
+        session.user = {
+          id: token.id as string,
+          name: token.name,
+          email: token.email,
+        };
 
         const secret = process.env.NEXTAUTH_SECRET;
         if (!secret) {

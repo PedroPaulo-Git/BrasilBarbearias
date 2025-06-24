@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -19,10 +19,11 @@ export default function SignInPage() {
   const router = useRouter()
 
   // Redirecionar se já estiver logado
-  if (session) {
-    router.push("/dashboard")
-    return null
-  }
+  useEffect(() => {
+    if (session) {
+      router.push("/dashboard")
+    }
+  }, [session, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

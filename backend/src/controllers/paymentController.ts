@@ -44,7 +44,7 @@ const processPayment = async (req: AuthenticatedRequest, res: Response) => {
     if (paymentResult.status === 'approved') {
       const startDate = new Date();
       const endDate = new Date(startDate);
-      endDate.setMonth(startDate.getMonth() + 1);
+      endDate.setDate(startDate.getDate() + 30);
 
       await prisma.subscription.update({
         where: { id: subscription.id },
@@ -100,30 +100,6 @@ export const createCheckout = async (req: AuthenticatedRequest, res: Response) =
     // Garante que o usuário tenha um nome para o checkout
     if (!user.name) {
       return res.status(400).json({ error: 'User name is required for checkout' });
-    }
-
-    // Lógica de trial para qualquer plano com trialDays > 0
-    if (plan.trialDays > 0) {
-      const existingSub = await prisma.subscription.findFirst({ where: { userId, planId } });
-      if (!existingSub) {
-        // Cria trial
-        const now = new Date();
-        const trialEnd = new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000);
-        await prisma.subscription.create({
-          data: {
-            userId,
-            planId,
-            status: 'trial',
-            trialStart: now,
-            trialEnd,
-          },
-        });
-        return res.json({ trial: true, trialEnd });
-      } else if (existingSub.status === 'trial' && existingSub.trialEnd && existingSub.trialEnd > new Date()) {
-        // Ainda em trial
-        return res.json({ trial: true, trialEnd: existingSub.trialEnd });
-      }
-      // Se trial expirou ou já foi usado, segue para checkout pago
     }
 
     // Etapa 1: Criar/atualizar a assinatura para obter um ID
@@ -204,7 +180,7 @@ export const mercadoPagoWebhook = async (req: Request, res: Response) => {
         if (subscription && subscription.status !== 'active') {
           const startDate = new Date();
           const endDate = new Date(startDate);
-          endDate.setMonth(startDate.getMonth() + 1);
+          endDate.setDate(startDate.getDate() + 30);
 
           await prisma.subscription.update({
             where: { id: subscription.id },

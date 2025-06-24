@@ -28,6 +28,10 @@ export class ShopController {
   async getShopBySlug(req: Request, res: Response): Promise<void> {
     try {
       const { slug } = req.params;
+      if (!slug) {
+        res.status(400).json({ success: false, error: "Slug é obrigatório" });
+        return;
+      }
       const response = await apiService.getShopBySlug(slug);
       
       const result: ApiResponse = {
@@ -51,6 +55,11 @@ export class ShopController {
     try {
       const { slug } = req.params;
       const { date } = req.query;
+      
+      if (!slug) {
+        res.status(400).json({ success: false, error: "Slug é obrigatório" });
+        return;
+      }
       
       if (!date || typeof date !== 'string') {
         const result: ApiResponse = {

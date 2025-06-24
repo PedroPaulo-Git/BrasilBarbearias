@@ -58,7 +58,7 @@ export default function Footer() {
         {/* Copyright Section */}
         <div className="mt-12 pt-8 border-t border-muted-foreground/20 text-center">
           <p className="text-sm text-muted-foreground">
-            &copy; {currentYear} BarbeariaApp. Todos os direitos reservados.
+            &copy; {currentYear} Brasil Barbearias. Todos os direitos reservados.
           </p>
         </div>
       </div>
