@@ -1,36 +1,3 @@
-// "use client";
-
-// import { useState, useEffect } from "react";
-// import {
-//   Search,
-//   Calendar,
-//   Clock,
-//   Smartphone,
-//   Loader2,
-//   CheckCircle,
-//   Users,
-//   BarChart,
-//   Share2,
-//   Star,
-//   MapPin,
-//   TrendingUp,
-//   Rocket,
-//   BarChartHorizontal,
-//   HelpCircle,
-// } from "lucide-react";
-// import {
-//   Accordion,
-//   AccordionContent,
-//   AccordionItem,
-//   AccordionTrigger,
-// } from "@/components/ui/accordion";
-// import { CardShop } from "@/components/CardShop";
-// import { Button } from "@/components/ui/button";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import Link from "next/link";
-// import { useRouter } from "next/navigation";
-// import { useMemo, FormEvent } from "react";
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -109,6 +76,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "authenticated") {
+      console.log("plan", plan);
       setIsLoadingPlan(true);
       const fetchPlan = async () => {
         try {
@@ -193,12 +161,12 @@ export default function Home() {
               </div>
             </form>
             <p className="text-sm text-primary-foreground/80">
-              É dono de uma barbearia?{" "}
+              {status === "authenticated" ? "Pronto para encher sua cadeira?" : "É dono de uma barbearia?"}{"  "}
               <Link
                 href="/auth/signup"
                 className="font-bold text-secondary underline hover:text-secondary/90 transition-colors"
               >
-                Cadastre seu negócio aqui.
+                {status === "authenticated" ? "Assine um plano e crie já sua barbearia." : "Cadastre seu negócio aqui."}
               </Link>
             </p>
           </div>
@@ -273,7 +241,7 @@ export default function Home() {
                 variant="default"
                 className="h-auto whitespace-normal px-4 py-2 text-sm font-bold shadow-md transition-shadow hover:shadow-lg sm:px-6 sm:text-base cursor-pointer"
               >
-                Cadastre seu Negócio e Escolha um Plano
+                {status === "authenticated" ? "Assine um plano e crie já sua barbearia." : "Cadastre seu Negócio e Escolha um Plano"}
               </Button>
             </Link>
           </div>
@@ -578,7 +546,7 @@ export default function Home() {
           </Accordion>
         </div>
        
-      </div>
+    </div>
     </>
   );
 }

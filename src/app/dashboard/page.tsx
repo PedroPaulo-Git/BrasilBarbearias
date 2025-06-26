@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Clock, MapPin, Users } from "lucide-react"
 import { GET } from '@/app/api/user/subscribe/route'
 import Link from "next/link"
+import { hasActiveSubscription } from "@/lib/subscriptionUtils"
 
 interface Shop {
   id: string
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [plan, setPlan] = useState<any>(null);
+  const [hasActiveSub, setHasActiveSub] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeMsg, setRemoveMsg] = useState("");
 
@@ -56,11 +58,26 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
+  useEffect(() => {
+    console.log("plan", plan)
+    // console.log("plan.plan.shopLimit", plan?.plan.shopLimit)
+  }, [plan])
 
   useEffect(() => {
     fetchShops()
     // Buscar plano do usuário pela NOVA rota
-    fetch("/api/user/subscribe").then(res => res.json()).then(setPlan)
+    fetch("/api/user/subscribe").then(res => res.json()).then(data => {
+      // A API pode retornar a assinatura diretamente ou dentro de um objeto
+      const subscription = data.subscription || data;
+      setPlan(subscription);
+      if (subscription && subscription.status) {
+        const now = new Date();
+        const isActive = subscription.status === 'active' && subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now;
+        setHasActiveSub(isActive);
+      } else {
+        setHasActiveSub(false);
+      }
+    })
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +133,7 @@ export default function DashboardPage() {
           </div>
           <Button
             onClick={() => setShowForm(true)}
-            disabled={!plan || plan.name === "Nenhum plano" || shops.length >= plan.shopLimit}
+            disabled={!plan || plan.status !== 'active' || (plan.plan && shops.length >= plan.plan.shopLimit)}
             className="mt-4 md:mt-0"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -134,23 +151,23 @@ export default function DashboardPage() {
                  <div className="flex items-center justify-between">
                     <p className="font-medium">Carregando informações do plano...</p>
                  </div>
-              ) : plan.name !== "Nenhum plano" ? (
+              ) : hasActiveSub ? (
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <p className="font-medium text-lg">
-                        {plan.name}{" "}
-                        <span className="text-sm font-normal px-2 py-1 rounded-full bg-primary/10 text-primary">
-                          {plan.status}
+                        {plan.plan.name}{" "}
+                        <span className="text-sm font-normal px-2 py-1 rounded-full bg-green-200 text-green-800">
+                          Ativo
                         </span>
                       </p>
-                      {plan.paymentEnd && (
+                      {plan.currentPeriodEnd && (
                         <p className="text-sm text-muted-foreground">
                           Acesso até:{" "}
-                          {new Date(plan.paymentEnd).toLocaleDateString()}
+                          {new Date(plan.currentPeriodEnd).toLocaleDateString()}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground mt-1">
-                        Limite de barbearias: {shops.length} / {plan.shopLimit}
+                        Limite de barbearias: {shops.length} / {plan.plan.shopLimit}
                       </p>
                     </div>
                     <Button size="sm" variant="outline" asChild className="mt-4 md:mt-0 self-start md:self-center">
@@ -160,8 +177,10 @@ export default function DashboardPage() {
               ) : (
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
                     <div>
-                      <p className="font-medium">Desbloqueie sua agenda automática.</p>
-                      <p className="text-sm text-muted-foreground mt-1">Assine um plano para ter seu link de agendamento, controle de clientes e muito mais.</p>
+                      <p className="font-medium">Sua assinatura não está ativa.</p>
+                      {plan.status === 'unpaid' && <p className="text-sm text-yellow-600">Seu pagamento está pendente. Verifique seu e-mail ou finalize a compra.</p>}
+                      {plan.status === 'expired' && <p className="text-sm text-red-600">Sua assinatura expirou.</p>}
+                      <p className="text-sm text-muted-foreground mt-1">Assine ou reative seu plano para gerenciar suas barbearias.</p>
                     </div>
                     <Button size="sm" asChild className="mt-4 md:mt-0 self-start md:self-center">
                       <Link href="/plans">Ver Planos</Link>
@@ -264,7 +283,7 @@ export default function DashboardPage() {
             <CardContent className="text-center py-8">
               {!plan ? (
                 <p>Verificando seu plano...</p>
-              ) : plan.name !== "Nenhum plano" ? (
+              ) : hasActiveSub ? (
                 <>
                   <p className="text-muted-foreground mb-4">
                     Você já tem um plano! Adicione sua primeira barbearia para começar.
@@ -278,7 +297,7 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground mb-4">
                     Sua jornada começa com um plano. Assine para cadastrar sua barbearia e ter acesso ao seu link de agendamento, painel de controle e todas as ferramentas de crescimento.
                   </p>
-                  <div className="flex justify-center gap-2">
+                  <div className="flex justify-center gap-2 md:flex-row flex-col">
                     <Button asChild>
                       <Link href="/plans">Ver Planos</Link>
                     </Button>

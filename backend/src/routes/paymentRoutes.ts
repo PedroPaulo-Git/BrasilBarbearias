@@ -1,13 +1,16 @@
 import { Router } from 'express';
-import { createCheckout, mercadoPagoWebhook } from '../controllers/paymentController';
+import { paymentController } from '../controllers/paymentController';
 import { authMiddleware } from '../middlewares/auth';
 
 const router = Router();
 
-// Rota para criar a preferência de pagamento (requer autenticação)
-router.post('/checkout/:planId', authMiddleware, createCheckout);
+// Rota para o frontend criar a preferência de pagamento
+router.post('/checkout', authMiddleware, paymentController.createCheckoutPreference);
 
-// Rota para receber webhooks do Mercado Pago (não requer autenticação)
-router.post('/webhook/mercadopago', mercadoPagoWebhook);
+// Confirmação/processamento direto do pagamento vindo do Checkout Brick
+router.post('/confirm-payment', authMiddleware, paymentController.confirmPayment);
 
-export default router; 
+// Rota para receber notificações de pagamento do Mercado Pago (webhook)
+router.post('/webhook', paymentController.handleWebhook);
+
+export const paymentRoutes = router; 

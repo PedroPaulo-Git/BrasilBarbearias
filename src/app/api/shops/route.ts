@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
 import { generateUniqueSlug, isValidTimeFormat } from "@/lib/utils"
 import { authOptions } from "@/lib/authOptions"
+import { canCreateShop } from "@/lib/subscriptionUtils"
 
 // GET - Listar shops do owner autenticado
 export async function GET() {
@@ -52,6 +53,15 @@ export async function POST(request: NextRequest) {
         { error: "Não autorizado" },
         { status: 401 }
       )
+    }
+
+    // Verificar se o usuário pode criar mais lojas
+    const canCreate = await canCreateShop(session.user.id);
+    if (!canCreate) {
+      return NextResponse.json(
+        { error: "Você atingiu o limite de lojas do seu plano ou sua assinatura não está ativa." },
+        { status: 403 }
+      );
     }
 
     const { name, address, openTime, closeTime, serviceDuration } = await request.json()

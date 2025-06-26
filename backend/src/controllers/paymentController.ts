@@ -5,46 +5,142 @@ import { AuthenticatedRequest } from '../types';
 
 const prisma = new PrismaClient();
 
-const processPayment = async (req: AuthenticatedRequest, res: Response) => {
+async function createCheckoutPreference(req: AuthenticatedRequest, res: Response) {
   try {
-    const { planId, token, paymentMethodId } = req.body;
+    const { planId } = req.body;
     const userId = req.user?.id;
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    if (!planId || !token || !paymentMethodId) {
-      return res.status(400).json({ error: 'Dados de pagamento incompletos.' });
-    }
-
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
+    if (!planId) return res.status(400).json({ error: 'planId é obrigatório' });
+    
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const plan = await prisma.plan.findUnique({ where: { id: planId } });
 
-    if (!user || !plan) {
-      return res.status(404).json({ error: 'Usuário ou Plano não encontrado.' });
-    }
+    if (!user || !plan) return res.status(404).json({ error: 'Usuário ou Plano não encontrado' });
+    if (!user.name) return res.status(400).json({ error: 'Nome do usuário é necessário' });
 
-    // 1. Criar a assinatura com status 'pending'
     const subscription = await prisma.subscription.upsert({
       where: { userId },
       update: { planId, status: 'pending' },
       create: { userId, planId, status: 'pending' },
     });
 
-    // 2. Chamar o serviço para criar o pagamento direto
-    const paymentResult = await createDirectPayment({
+    const notificationUrl = `${process.env.API_BASE_URL}/payments/webhook`;
+    const preference = await createPreference({
       plan,
-      token,
-      userEmail: user.email,
-      paymentMethodId,
+      user,
       externalReference: subscription.id,
+      notificationUrl,
+      backUrls: {
+        success: `${process.env.FRONTEND_URL}/dashboard`,
+        failure: `${process.env.FRONTEND_URL}/payment-failed`,
+        pending: `${process.env.FRONTEND_URL}/payment-pending`,
+      },
+    });
+    
+    if (!preference.id) {
+      return res.status(500).json({ error: 'Falha ao criar a preferência de pagamento' });
+    }
+
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { mercadoPagoPreferenceId: preference.id },
     });
 
-    // 3. Verificar o resultado e atualizar a assinatura
+    return res.json({ preferenceId: preference.id });
+
+  } catch (error) {
+    console.error('Erro ao criar preferência de checkout:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+async function handleWebhook(req: Request, res: Response) {
+  try {
+    const paymentNotification = req.body;
+    console.log('Webhook recebido:', JSON.stringify(paymentNotification, null, 2));
+
+    if (paymentNotification.type === 'payment' && paymentNotification.data?.id) {
+      const paymentId = paymentNotification.data.id;
+      const payment = await getPayment(paymentId);
+
+      if (payment && payment.external_reference) {
+        const subscriptionId = payment.external_reference;
+        const subscription = await prisma.subscription.findUnique({
+          where: { id: subscriptionId },
+        });
+
+        if (subscription && subscription.status !== 'active') {
+           if (payment.status === 'approved') {
+              const startDate = new Date();
+              const endDate = new Date(startDate);
+              endDate.setMonth(startDate.getMonth() + 1);
+
+              await prisma.subscription.update({
+                where: { id: subscriptionId },
+                data: {
+                  status: 'active',
+                  mercadoPagoPaymentId: String(payment.id),
+                  currentPeriodStart: startDate,
+                  currentPeriodEnd: endDate,
+                },
+              });
+              console.log(`[Webhook] Assinatura ${subscription.id} ativada com sucesso.`);
+           } else if (payment.status) {
+             await prisma.subscription.update({
+               where: { id: subscriptionId },
+               data: { status: payment.status },
+             });
+             console.log(`[Webhook] Status da assinatura ${subscription.id} atualizado para: ${payment.status}`);
+           }
+        } else {
+          console.log('[Webhook] Assinatura não encontrada ou já está ativa.');
+        }
+      }
+    }
+    res.status(200).send('ok');
+  } catch (error) {
+    console.error('Erro no webhook do Mercado Pago:', error);
+    res.status(500).send('Internal Server Error');
+  }
+}
+
+async function confirmPayment(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { planId, preferenceId, paymentData } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
+    if (!planId || !paymentData) return res.status(400).json({ error: 'planId e paymentData são obrigatórios' });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!user || !plan) return res.status(404).json({ error: 'Usuário ou Plano não encontrado' });
+
+    // Busca ou cria assinatura pendente vinculada ao usuário
+    let subscription = await prisma.subscription.findUnique({ where: { userId } });
+    if (!subscription) {
+      subscription = await prisma.subscription.create({ data: { userId, planId, status: 'pending' } });
+    }
+
+    const paymentResult = await createDirectPayment({
+      plan,
+      token: paymentData.token,
+      userEmail: user.email,
+      paymentMethodId: paymentData.payment_method_id,
+      externalReference: subscription.id,
+      payer: {
+        email: user.email,
+        identification: paymentData.payer.identification,
+      },
+      installments: paymentData.installments || 1,
+    });
+    
+    // Atualiza assinatura conforme resultado
     if (paymentResult.status === 'approved') {
       const startDate = new Date();
       const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 30);
+      endDate.setMonth(startDate.getMonth() + 1);
 
       await prisma.subscription.update({
         where: { id: subscription.id },
@@ -55,157 +151,29 @@ const processPayment = async (req: AuthenticatedRequest, res: Response) => {
           currentPeriodEnd: endDate,
         },
       });
-      return res.status(201).json({ success: true, message: 'Pagamento aprovado e assinatura ativada!' });
     } else {
-      // Se o pagamento não foi aprovado, reverte (ou mantém como pending)
       await prisma.subscription.update({
         where: { id: subscription.id },
-        data: { status: 'payment_failed' },
-      });
-      return res.status(400).json({
-        success: false,
-        message: paymentResult.status_detail || 'Pagamento recusado.',
-        details: paymentResult,
+        data: { status: paymentResult.status || 'pending' },
       });
     }
+
+    return res.json({
+      status: paymentResult.status,
+      status_detail: paymentResult.status_detail,
+      id: paymentResult.id,
+      message: 'Pagamento processado',
+    });
   } catch (error: any) {
-    console.error('Erro ao processar pagamento:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    console.error('Erro ao confirmar pagamento:', error);
+    // Tenta extrair informação vinda do SDK do Mercado Pago
+    const mpMsg = error?.message || error?.cause?.[0]?.description;
+    return res.status(400).json({ error: mpMsg || 'Erro ao processar pagamento' });
   }
-};
-
-export const createCheckout = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { planId } = req.params;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    if (!planId) {
-      return res.status(400).json({ error: 'planId is required' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const plan = await prisma.plan.findUnique({ where: { id: planId } });
-    if (!plan) {
-      return res.status(404).json({ error: 'Plano não encontrado' });
-    }
-
-    // Garante que o usuário tenha um nome para o checkout
-    if (!user.name) {
-      return res.status(400).json({ error: 'User name is required for checkout' });
-    }
-
-    // Etapa 1: Criar/atualizar a assinatura para obter um ID
-    const subscription = await prisma.subscription.upsert({
-      where: {
-        userId,
-      },
-      update: {
-        planId,
-        status: 'pending',
-      },
-      create: {
-        userId,
-        planId,
-        status: 'pending',
-      },
-    });
-
-    // Etapa 2: Criar a preferência de pagamento com o ID da assinatura como referência externa
-    const backUrls = {
-      success: `${process.env.BASE_URL}/profile?payment=success`,
-      failure: `${process.env.BASE_URL}/profile?payment=failure`,
-      pending: `${process.env.BASE_URL}/profile?payment=pending`,
-    };
-    const notificationUrl = `${process.env.API_BASE_URL}/webhook/mercadopago`;
-    const pref = await createPreference({
-      plan,
-      user,
-      backUrls,
-      notificationUrl,
-      externalReference: subscription.id,
-    });
-
-    if (!pref.id) {
-      return res.status(500).json({ error: 'Failed to create payment preference' });
-    }
-
-    // Etapa 3: Atualizar a assinatura com o ID da preferência do Mercado Pago
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        mercadoPagoPreferenceId: pref.id,
-      },
-    });
-
-    return res.json({ init_point: pref.init_point });
-  } catch (error) {
-    console.error('Erro no checkout:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
-  }
-};
-
-export const mercadoPagoWebhook = async (req: Request, res: Response) => {
-  try {
-    const { body } = req;
-    console.log('Webhook recebido:', JSON.stringify(body, null, 2));
-
-    if (body.type === 'payment' && body.data?.id) {
-      const paymentId = body.data.id;
-      const payment: any = await getPayment(paymentId);
-
-      if (payment && payment.status === 'approved') {
-        const externalReference = payment.external_reference;
-        const preferenceId = payment.preference_id;
-
-        let subscription = null;
-
-        if (externalReference) {
-          subscription = await prisma.subscription.findUnique({
-            where: { id: externalReference },
-          });
-        } else if (preferenceId) {
-          subscription = await prisma.subscription.findFirst({
-            where: { mercadoPagoPreferenceId: preferenceId },
-          });
-        }
-
-        if (subscription && subscription.status !== 'active') {
-          const startDate = new Date();
-          const endDate = new Date(startDate);
-          endDate.setDate(startDate.getDate() + 30);
-
-          await prisma.subscription.update({
-            where: { id: subscription.id },
-            data: {
-              status: 'active',
-              mercadoPagoPaymentId: String(payment.id),
-              currentPeriodStart: startDate,
-              currentPeriodEnd: endDate,
-            },
-          });
-          console.log(`Assinatura ${subscription.id} ativada com sucesso.`);
-        } else {
-          console.log('Assinatura não encontrada ou já está ativa.');
-        }
-      }
-    }
-    res.status(200).send('ok');
-  } catch (error) {
-    console.error('Erro no webhook do Mercado Pago:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
+}
 
 export const paymentController = {
-  createCheckout,
-  mercadoPagoWebhook,
-  processPayment,
+  createCheckoutPreference,
+  handleWebhook,
+  confirmPayment,
 }; 

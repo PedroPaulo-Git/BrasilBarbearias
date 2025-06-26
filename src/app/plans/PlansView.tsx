@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check } from "lucide-react";
-import { processDirectPayment } from "./actions";
 import { Plan, Subscription } from "@prisma/client";
 import { PaymentForm } from "@/components/PaymentForm";
-import { useTransition } from 'react';
+import { useRouter } from "next/navigation";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface PlansViewProps {
   plans: (Plan & { price: number })[];
@@ -16,31 +21,29 @@ interface PlansViewProps {
 }
 
 export function PlansView({ plans, userSubscription }: PlansViewProps) {
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleSubscriptionClick = (plan: Plan) => {
-    setSelectedPlan(plan);
-    setError(null);
+  const handleSubscriptionClick = (planId: string) => {
+    setSelectedPlanId(planId);
   };
 
-  const handleFormSubmit = async (formData: { token: string; paymentMethodId: string }) => {
-    if (!selectedPlan) return;
-
-    startTransition(async () => {
-      try {
-        await processDirectPayment({ ...formData, planId: selectedPlan.id });
-        setSelectedPlan(null); // Fecha o dialog em caso de sucesso
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Ocorreu um erro desconhecido.");
-      }
-    });
+  const handlePaymentCompletion = () => {
+    // Esta função agora é chamada no onSubmit do Brick.
+    // O formulário mostrará a mensagem "Processando...".
+    // O usuário fechará o diálogo manualmente e verá o status atualizado
+    // no dashboard, que será atualizado pelo webhook.
+    // router.refresh(); // REMOVIDO PARA EVITAR RE-RENDER
+    console.log('[PlansView] handlePaymentCompletion foi chamado.');
+  };
+  
+  const handleDialogClose = () => {
+    setSelectedPlanId(null);
   };
 
   const currentPlanPrice = userSubscription?.plan?.price ?? -1;
   const hasActiveSubscription = userSubscription?.status === 'active';
+  const selectedPlan = plans.find(p => p.id === selectedPlanId);
 
   return (
     <div className="container mx-auto py-12">
@@ -90,7 +93,7 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
               </CardContent>
               <CardFooter>
                 <Button 
-                  onClick={() => handleSubscriptionClick(plan)} 
+                  onClick={() => handleSubscriptionClick(plan.id)} 
                   className="w-full" 
                   disabled={isCurrentPlan}
                 >
@@ -102,21 +105,21 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
         })}
       </div>
       
-      <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
+      <Dialog open={!!selectedPlanId} onOpenChange={handleDialogClose}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Finalizar Assinatura</DialogTitle>
+            <DialogDescription>
+              Escolha sua forma de pagamento preferida. O ambiente é seguro e protegido.
+            </DialogDescription>
           </DialogHeader>
           {selectedPlan && (
             <PaymentForm
               planId={selectedPlan.id}
-              planName={selectedPlan.name}
               planPrice={selectedPlan.price}
-              isSubmitting={isPending}
-              onSubmit={handleFormSubmit}
+              onPaymentSuccess={handlePaymentCompletion}
             />
           )}
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </DialogContent>
       </Dialog>
 
