@@ -108,6 +108,7 @@ export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentForm
             paymentData: {
               token: formData.token,
               payment_method_id: selectedPaymentMethod,
+              issuer_id: formData.issuer_id ? Number(formData.issuer_id) : undefined,
               transaction_amount: planPrice,
               description: `Assinatura do plano - ${planId}`,
               payer: {

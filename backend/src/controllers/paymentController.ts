@@ -128,6 +128,7 @@ async function confirmPayment(req: AuthenticatedRequest, res: Response) {
       token: paymentData.token,
       userEmail: user.email,
       paymentMethodId: paymentData.payment_method_id,
+      issuerId: paymentData.issuer_id,
       externalReference: subscription.id,
       payer: {
         email: user.email,

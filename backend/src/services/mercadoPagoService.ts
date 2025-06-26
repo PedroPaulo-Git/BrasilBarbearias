@@ -46,6 +46,7 @@ export async function createPreference({
       notification_url: notificationUrl,
       external_reference: externalReference,
       statement_descriptor: 'BRASILBARBEARIA',
+      
       payment_methods: {
         excluded_payment_methods: [
           // { id: 'master' }, // descomente se quiser bloquear
@@ -83,11 +84,13 @@ export async function createDirectPayment({
   externalReference,
   payer,
   installments,
+  issuerId, 
 }: {
   plan: { name: string; price: number };
   token: string;
   userEmail: string;
   paymentMethodId: string;
+  issuerId?: string | number | undefined;
   externalReference: string;
   payer: {
     email: string;
@@ -97,6 +100,7 @@ export async function createDirectPayment({
     };
   };
   installments: number;
+ 
 }) {
   const payment = await paymentClient.create({
     body: {
@@ -104,11 +108,12 @@ export async function createDirectPayment({
       description: `Assinatura Plano ${plan.name}`,
       payment_method_id: paymentMethodId,
       token,
+      ...(issuerId !== undefined && !isNaN(Number(issuerId)) ? { issuer_id: Number(issuerId) } : {}),
       payer: {
         email: payer.email,
         identification: {
-          type: payer.identification.type,
-          number: payer.identification.number,
+          type: payer.identification.type || 'CPF', // Default para CPF
+          number: payer.identification.number.replace(/\D/g, ''), // Remove não-dígitos
         },
       },
       installments,
