@@ -1,4 +1,6 @@
+import axios from 'axios';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { v4 as uuidv4 } from 'uuid';
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!,
@@ -61,7 +63,7 @@ export async function createPreference({
       // expiration_date_to: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
     },
   });
-
+  console.log('result createPreference backend->', result);
   return result;
 }
 
@@ -74,6 +76,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 export async function getPayment(paymentId: string) {
   const payment = await paymentClient.get({ id: paymentId });
+  console.log('payment getPayment backend->', payment);
   return payment;
 }
 export async function createDirectPayment({
@@ -81,16 +84,16 @@ export async function createDirectPayment({
   token,
   userEmail,
   paymentMethodId,
+  issuerId,
   externalReference,
   payer,
   installments,
-  issuerId, 
 }: {
-  plan: { name: string; price: number };
+  plan: any;
   token: string;
   userEmail: string;
-  paymentMethodId: string;
-  issuerId?: string | number | undefined;
+  paymentMethodId?: string;
+  issuerId?: string | number;
   externalReference: string;
   payer: {
     email: string;
@@ -100,26 +103,64 @@ export async function createDirectPayment({
     };
   };
   installments: number;
- 
 }) {
-  const payment = await paymentClient.create({
-    body: {
-      transaction_amount: plan.price,
-      description: `Assinatura Plano ${plan.name}`,
-      payment_method_id: paymentMethodId,
-      token,
-      ...(issuerId !== undefined && !isNaN(Number(issuerId)) ? { issuer_id: Number(issuerId) } : {}),
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  if (!accessToken) throw new Error('Access Token não configurado');
+
+  const idempotencyKey = uuidv4();
+
+  const body = {
+    transaction_amount: plan.price,
+    token,
+    description: `Assinatura do plano - ${plan.name}`,
+    installments,
+    ...(paymentMethodId ? { payment_method_id: paymentMethodId } : {}),
+    ...(issuerId ? { issuer_id: Number(issuerId) } : {}),
+    external_reference: externalReference,
+    payer: {
+      email: payer.email,
+      identification: payer.identification,
+    },
+    additional_info: {
+      items: [
+        {
+          id: plan.id,
+          title: plan.name,
+          description: plan.description || 'Plano de assinatura',
+          picture_url: 'https://http2.mlstatic.com/resources/frontend/statics/growth-sellers-landings/device-mlb-point-i_medium2x.png',
+          category_id: 'services',
+          quantity: 1,
+          unit_price: plan.price,
+        },
+      ],
       payer: {
-        email: payer.email,
-        identification: {
-          type: payer.identification.type || 'CPF', // Default para CPF
-          number: payer.identification.number.replace(/\D/g, ''), // Remove não-dígitos
+        first_name: 'Nome',
+        last_name: 'Sobrenome',
+        phone: {
+          area_code: '11',
+          number: '987654321',
         },
       },
-      installments,
-      external_reference: externalReference,
+      shipments: {
+        receiver_address: {
+          zip_code: '12312-123',
+          state_name: 'Rio de Janeiro',
+          city_name: 'Buzios',
+          street_name: 'Av das Nacoes Unidas',
+          street_number: 3003,
+        },
+      },
+    },
+  };
+
+  console.log('body createDirectPayment backend->', body);
+  const response = await axios.post('https://api.mercadopago.com/v1/payments', body, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey,
     },
   });
-
-  return payment;
+  console.log('response createDirectPayment backend->', response);
+  return response.data;
 }

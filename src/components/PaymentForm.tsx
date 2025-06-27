@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Payment, initMercadoPago } from '@mercadopago/sdk-react';
+import { useState, useEffect, useRef } from "react";
+import { Payment, initMercadoPago } from "@mercadopago/sdk-react";
 
 const MERCADO_PAGO_PUBLIC_KEY = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
 
@@ -11,51 +11,61 @@ interface PaymentFormProps {
   onPaymentSuccess: () => void;
 }
 
-export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentFormProps) => {
+export const PaymentForm = ({
+  planId,
+  planPrice,
+  onPaymentSuccess,
+}: PaymentFormProps) => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const preferenceCreationInProgress = useRef(false);
 
   useEffect(() => {
-    console.log('Mercado Pago Public Key:', MERCADO_PAGO_PUBLIC_KEY ? 'Carregada' : 'NÃO ENCONTRADA');
-    
+    console.log(
+      "Mercado Pago Public Key:",
+      MERCADO_PAGO_PUBLIC_KEY ? "Carregada" : "NÃO ENCONTRADA"
+    );
+
     if (MERCADO_PAGO_PUBLIC_KEY && !(window as any).mercadoPagoInitialized) {
       initMercadoPago(MERCADO_PAGO_PUBLIC_KEY);
       (window as any).mercadoPagoInitialized = true;
-      console.log('SDK Mercado Pago inicializado.',MERCADO_PAGO_PUBLIC_KEY);
+      console.log("SDK Mercado Pago inicializado.", MERCADO_PAGO_PUBLIC_KEY);
     }
   }, []);
 
   useEffect(() => {
     const createPreference = async () => {
       if (!planId || preferenceCreationInProgress.current) return;
-      
+
       preferenceCreationInProgress.current = true;
       setIsLoading(true);
       setError(null);
-      
+
       try {
-        const response = await fetch('/api/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ planId }),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Falha ao criar a preferência de pagamento.');
+          throw new Error(
+            data.error || "Falha ao criar a preferência de pagamento."
+          );
         }
         if (!data.preferenceId) {
-          throw new Error('preferenceId não recebido do backend.');
+          throw new Error("preferenceId não recebido do backend.");
         }
-        
+        console.log("data createPreference frontend->", data);
         setPreferenceId(data.preferenceId);
       } catch (err: any) {
         setError(err.message);
-        console.error('Erro ao criar preferência:', err);
+        console.error("Erro ao criar preferência:", err);
       } finally {
         setIsLoading(false);
         preferenceCreationInProgress.current = false;
@@ -69,7 +79,7 @@ export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentForm
     customization: {
       visual: {
         style: {
-          theme: 'default' as const,
+          theme: "default" as const,
         },
       },
       paymentMethods: {
@@ -80,7 +90,7 @@ export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentForm
         atm: "all",
         onboarding_credits: "all",
         wallet_purchase: "all",
-        maxInstallments: 1
+        maxInstallments: 1,
       } as const,
     },
     initialization: {
@@ -88,90 +98,101 @@ export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentForm
       preferenceId: preferenceId as string,
     },
     onReady: () => {
-      console.log('Brick de Pagamento pronto!');
+      console.log("Brick de Pagamento pronto!");
     },
     onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
-      console.log('🔄 Iniciando processamento do pagamento...');
-      console.log('Método de pagamento:', selectedPaymentMethod);
-      console.log('Dados do formulário:', formData);
-      
+      console.log("🔄 Iniciando processamento do pagamento...");
+      console.log("Método de pagamento:", selectedPaymentMethod);
+      console.log("Dados do formulário:", formData);
+
       setIsProcessing(true);
       setError(null);
-      
+
       try {
         // Processa o pagamento no seu backend
-        const response = await fetch('/api/process-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/process-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             planId,
             paymentData: {
               token: formData.token,
-              payment_method_id: selectedPaymentMethod,
-              issuer_id: formData.issuer_id ? Number(formData.issuer_id) : undefined,
+              issuer_id: formData.issuer_id
+                ? Number(formData.issuer_id)
+                : undefined,
               transaction_amount: planPrice,
               description: `Assinatura do plano - ${planId}`,
               payer: {
-                email: formData.payer?.email || '',
+                email: formData.payer?.email || "",
                 identification: formData.payer?.identification || {},
               },
               installments: formData.installments || 1,
-            }
+            },
           }),
         });
-
+        console.log("response process-payment frontend->", response);
         const result = await response.json();
-        
+        console.log("result process-payment frontend->", result);
         if (!response.ok) {
-          throw new Error(result.error || 'Erro ao processar pagamento');
+          throw new Error(result.error || "Erro ao processar pagamento");
         }
 
-        console.log('✅ Pagamento processado:', result);
-        
+        console.log("✅ Pagamento processado:", result);
+
         // Verifica o status do pagamento
-        if (result.status === 'approved') {
-          console.log('✅ Pagamento aprovado!');
+        if (result.status === "approved") {
+          console.log("✅ Pagamento aprovado!");
+          setPaymentSuccess(true);
           onPaymentSuccess();
-        } else if (result.status === 'pending') {
-          console.log('⏳ Pagamento pendente');
+        } else if (result.status === "pending") {
+          console.log("⏳ Pagamento pendente");
           // Você pode mostrar uma mensagem diferente para pagamentos pendentes
-          setError('Pagamento em processamento. Você receberá uma confirmação em breve.');
+          setError(
+            "Pagamento em processamento. Você receberá uma confirmação em breve."
+          );
         } else {
-          console.log('❌ Pagamento rejeitado:', result.status_detail);
-          setError(`Pagamento não foi aprovado: ${result.status_detail || 'Tente novamente'}`);
+          console.log("❌ Pagamento rejeitado:", result.status_detail);
+          setError(
+            `Pagamento não foi aprovado: ${
+              result.status_detail || "Tente novamente"
+            }`
+          );
         }
-        
       } catch (err: any) {
-        console.error('❌ Erro no processamento:', err);
-        setError(err.message || 'Erro ao processar pagamento. Tente novamente.');
+        console.error("❌ Erro no processamento:", err);
+        setError(
+          err.message || "Erro ao processar pagamento. Tente novamente."
+        );
       } finally {
         setIsProcessing(false);
       }
     },
     onError: (error: any) => {
-      console.warn('🚨 Erro detectado no Brick:', error);
-    
+      console.warn("🚨 Erro detectado no Brick:", error);
+
       // Se o erro for não crítico, só loga e não altera a UI
-      if (error?.type === 'non_critical') {
+      if (error?.type === "non_critical") {
         return;
       }
-    
+
       // Se for erro de verdade, aí sim mostra pro usuário
-      setError('Ocorreu um erro no formulário de pagamento. Tente novamente.');
+      setError("Ocorreu um erro no formulário de pagamento. Tente novamente.");
       setIsProcessing(false);
-    }
+    },
   };
 
   if (isLoading) {
-    return <p className="text-center py-8">Carregando formulário de pagamento...</p>;
+    return (
+      <p className="text-center py-8">Carregando formulário de pagamento...</p>
+    );
   }
 
   if (error) {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 mb-4">{error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Tentar Novamente
@@ -191,14 +212,22 @@ export const PaymentForm = ({ planId, planPrice, onPaymentSuccess }: PaymentForm
 
   return (
     <div className="py-4">
-      {preferenceId && (
-        <Payment
-          initialization={paymentConfig.initialization}
-          customization={paymentConfig.customization}
-          onReady={paymentConfig.onReady}
-          onSubmit={paymentConfig.onSubmit}
-          onError={paymentConfig.onError}
-        />
+      {paymentSuccess ? (
+        <p className="text-green-600 text-center font-semibold">
+          ✅ Pagamento aprovado com sucesso!
+        </p>
+      ) : (
+        <div>
+          {preferenceId && !paymentSuccess && (
+            <Payment
+              initialization={paymentConfig.initialization}
+              customization={paymentConfig.customization}
+              onReady={paymentConfig.onReady}
+              onSubmit={paymentConfig.onSubmit}
+              onError={paymentConfig.onError}
+            />
+          )}
+        </div>
       )}
     </div>
   );
