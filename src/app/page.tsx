@@ -48,7 +48,9 @@ export default function Home() {
   const { data: session, status } = useSession();
   const [plan, setPlan] = useState<any>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
-
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   useEffect(() => {
     const fetchShops = async () => {
       try {
@@ -75,31 +77,38 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      console.log("plan", plan);
+    const checkAuthAndSubscription = async () => {
       setIsLoadingPlan(true);
-      const fetchPlan = async () => {
+      
+      if (status === "authenticated") {
         try {
-          const res = await fetch("/api/user/plan");
+          const res = await fetch("/api/user/subscribe", { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
             setPlan(data);
-          } else {
-            setPlan(null);
+            setIsSubscribed(data?.status === "active");
           }
         } catch (error) {
           console.error("Failed to fetch user plan", error);
-          setPlan(null);
-        } finally {
-          setIsLoadingPlan(false);
+          setIsSubscribed(false);
         }
-      };
-      fetchPlan();
-    } else if (status !== "loading") {
+      } else if (status === "unauthenticated") {
+        setIsSubscribed(false);
+      }
+      
       setIsLoadingPlan(false);
-      setPlan(null);
+      setInitialCheckComplete(true);
+    };
+
+    if (status !== "loading") {
+      checkAuthAndSubscription();
     }
   }, [status]);
+
+
+  useEffect(() => {
+    setIsSubscribed(status === "authenticated" && plan?.status === "active");
+  }, [plan,status]);
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -111,19 +120,19 @@ export default function Home() {
   };
 
   const featuredShops = useMemo(() => shops.slice(0, 6), [shops]);
-  const isSubscribed = status === "authenticated" && plan?.status === "active";
 
-  if (isLoading || (status === "loading" && isLoadingPlan)) {
+
+  if (isLoading || !initialCheckComplete) {
     return (
       <div className="min-h-screen flex justify-center items-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
       </div>
     );
   }
-
+  
   if (isSubscribed) {
     return <SubscribedHomeView />;
-  }
+  }else {
 
   return (
     <>
@@ -549,4 +558,5 @@ export default function Home() {
     </div>
     </>
   );
+}
 }
