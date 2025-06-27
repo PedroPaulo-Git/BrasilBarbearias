@@ -78,6 +78,11 @@ export default function DashboardPage() {
         setHasActiveSub(false);
       }
     })
+    console.log('plan ->', plan)
+    console.log('hasActiveSub ->', hasActiveSub)
+    console.log('shops ->', shops)
+    console.log('status ->', status)
+  
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -24,25 +24,56 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const router = useRouter();
 
+  // keep local copy of subscription so we can update after payment without full reload
+  type UserSubscription = PlansViewProps["userSubscription"];
+  const [subscription, setSubscription] = useState<UserSubscription>(userSubscription);
+
+  // Utility to refresh subscription from API
+  const fetchUserSubscription = async () => {
+    try {
+      const res = await fetch("/api/user/subscribe", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to fetch subscription");
+      const data = await res.json();
+
+      // The API returns a simplified object. Map it to the same shape used in this component.
+      setSubscription((prev) => ({
+        ...prev,
+        status: data.status,
+        planId: selectedPlanId ?? prev?.planId,
+        plan: {
+          ...prev?.plan,
+          name: data.name,
+          price: data.price ?? prev?.plan?.price,
+          shopLimit: data.shopLimit ?? prev?.plan?.shopLimit,
+        },
+        currentPeriodEnd: data.paymentEnd ?? prev?.currentPeriodEnd,
+      } as any));
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+    }
+  };
+
   const handleSubscriptionClick = (planId: string) => {
     setSelectedPlanId(planId);
   };
 
-  const handlePaymentCompletion = () => {
+  const handlePaymentCompletion = async () => {
     // Esta função agora é chamada no onSubmit do Brick.
     // O formulário mostrará a mensagem "Processando...".
     // O usuário fechará o diálogo manualmente e verá o status atualizado
     // no dashboard, que será atualizado pelo webhook.
     // router.refresh(); // REMOVIDO PARA EVITAR RE-RENDER
     console.log('[PlansView] handlePaymentCompletion foi chamado.');
+
+    await fetchUserSubscription();
   };
   
   const handleDialogClose = () => {
     setSelectedPlanId(null);
   };
-
-  const currentPlanPrice = userSubscription?.plan?.price ?? -1;
-  const hasActiveSubscription = userSubscription?.status === 'active';
+  console.log('subscription ->', subscription)
+  const currentPlanPrice = subscription?.plan?.price ?? -1;
+  const hasActiveSubscription = subscription?.status === 'active';
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
 
   return (
@@ -59,7 +90,7 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => {
-          const isCurrentPlan = userSubscription?.planId === plan.id && hasActiveSubscription;
+          const isCurrentPlan = subscription?.planId === plan.id && hasActiveSubscription;
           let buttonText = 'Assinar Agora';
           if (hasActiveSubscription) {
             if (isCurrentPlan) {

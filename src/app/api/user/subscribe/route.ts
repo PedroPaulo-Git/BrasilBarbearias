@@ -19,18 +19,28 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { subscriptions: { include: { plan: true } } },
+      include: {
+        subscriptions: {
+          orderBy: { createdAt: "desc" }, // pega a assinatura mais recente primeiro
+          include: { plan: true },
+        },
+      },
     });
     
     if (!user || !user.subscriptions || user.subscriptions.length === 0) {
       return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
     }
     console.log(user)
-    const sub: any = user?.subscriptions?.[0];
-    if (!sub || !sub.plan) {
-      return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
-    }
+    // const sub: any = user?.subscriptions?.[0];
+    // if (!sub || !sub.plan) {
+    //   return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
+    // }
+    const sub = user.subscriptions.find(s => s.status === 'active' && (!s.currentPeriodEnd || new Date(s.currentPeriodEnd) > new Date()));
 
+    if (!sub) {
+      return NextResponse.json({ name: "Nenhum plano ativo", status: "sem assinatura" });
+    }
+    
     return NextResponse.json({
       name: sub.plan.name,
       status: sub.status,
