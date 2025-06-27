@@ -29,11 +29,26 @@ export default async function PlansPage() {
         orderBy: { price: 'asc' } 
     });
     
-    const userSubscription = await prisma.subscription.findUnique({
-        where: { userId: session.user.id },
+    const userSubscription = await prisma.subscription.findFirst({
+        where: { 
+            userId: session.user.id,
+            status: 'active'
+        },
+        orderBy: {
+            createdAt: 'desc'
+        },
         select: {
             planId: true,
             status: true,
+            currentPeriodEnd: true,
+            currentPeriodStart: true,
+            plan: {
+                select: {
+                    name: true,
+                    price: true,
+                    shopLimit: true,
+                }
+            }
         }
     });
 

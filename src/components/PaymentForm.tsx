@@ -17,6 +17,7 @@ export const PaymentForm = ({
   onPaymentSuccess,
 }: PaymentFormProps) => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,6 +64,7 @@ export const PaymentForm = ({
         }
         console.log("data createPreference frontend->", data);
         setPreferenceId(data.preferenceId);
+        setSubscriptionId(data.subscriptionId);
       } catch (err: any) {
         setError(err.message);
         console.error("Erro ao criar preferência:", err);
@@ -115,6 +117,7 @@ export const PaymentForm = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             planId,
+            subscriptionId,
             paymentData: {
               token: formData.token,
               issuer_id: formData.issuer_id

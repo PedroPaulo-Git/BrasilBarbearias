@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
@@ -34,22 +34,36 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       const res = await fetch("/api/user/subscribe", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch subscription");
       const data = await res.json();
-
+      console.log('data fetchUserSubscription ->', data)
       // The API returns a simplified object. Map it to the same shape used in this component.
-      setSubscription((prev) => ({
-        ...prev,
-        status: data.status,
-        planId: selectedPlanId ?? prev?.planId,
-        plan: {
-          ...prev?.plan,
-          name: data.name,
-          price: data.price ?? prev?.plan?.price,
-          shopLimit: data.shopLimit ?? prev?.plan?.shopLimit,
-        },
-        currentPeriodEnd: data.paymentEnd ?? prev?.currentPeriodEnd,
-      } as any));
-    } catch (error) {
-      console.error("Error updating subscription:", error);
+    //   setSubscription((prev) => ({
+    //     ...prev,
+    //     status: data.status,
+    //     planId: selectedPlanId ?? prev?.planId,
+    //     plan: {
+    //       ...prev?.plan,
+    //       name: data.name,
+    //       price: data.price ?? prev?.plan?.price,
+    //       shopLimit: data.shopLimit ?? prev?.plan?.shopLimit,
+    //     },
+    //     currentPeriodEnd: data.paymentEnd ?? prev?.currentPeriodEnd,
+    //   } as any));
+    // } 
+    setSubscription({
+      status: data.status,
+      planId: data.planId,
+      currentPeriodEnd: data.paymentEnd,
+      currentPeriodStart: data.paymentStart,
+      plan: {
+        name: data.name,
+        price: data.price,
+        shopLimit: data.shopLimit,
+      },
+    });
+    console.error('PlansView ->',plans, data, subscription)
+    }
+    catch (error) {
+      console.error('PlansView error ->',plans, error);
     }
   };
 
@@ -71,7 +85,11 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
   const handleDialogClose = () => {
     setSelectedPlanId(null);
   };
-  console.log('subscription ->', subscription)
+  console.error('PlansView ->',plans, userSubscription)
+  useEffect(() => {
+    console.log('PlansView useEffect ->', plans, userSubscription, subscription);
+  }, [subscription]);
+  
   const currentPlanPrice = subscription?.plan?.price ?? -1;
   const hasActiveSubscription = subscription?.status === 'active';
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
@@ -91,6 +109,10 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => {
           const isCurrentPlan = subscription?.planId === plan.id && hasActiveSubscription;
+          console.log('isCurrentPlan ->', isCurrentPlan)
+          console.log('hasActiveSubscription ->', hasActiveSubscription)
+          console.log('plan.price ->', plan.price)
+          console.log('currentPlanPrice ->', currentPlanPrice)
           let buttonText = 'Assinar Agora';
           if (hasActiveSubscription) {
             if (isCurrentPlan) {

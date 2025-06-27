@@ -69,10 +69,12 @@ export default function DashboardPage() {
     fetch("/api/user/subscribe").then(res => res.json()).then(data => {
       // A API pode retornar a assinatura diretamente ou dentro de um objeto
       const subscription = data.subscription || data;
+      console.log('subscription ->', subscription)
       setPlan(subscription);
       if (subscription && subscription.status) {
         const now = new Date();
-        const isActive = subscription.status === 'active' && subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now;
+        const isActive = subscription.status === 'active' && subscription.paymentEnd && new Date(subscription.paymentEnd) > now;
+        console.log('isActive ->', isActive)
         setHasActiveSub(isActive);
       } else {
         setHasActiveSub(false);
@@ -160,19 +162,19 @@ export default function DashboardPage() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <p className="font-medium text-lg">
-                        {plan.plan.name}{" "}
+                        {plan.name}{" "}
                         <span className="text-sm font-normal px-2 py-1 rounded-full bg-green-200 text-green-800">
                           Ativo
                         </span>
                       </p>
-                      {plan.currentPeriodEnd && (
+                      {plan.paymentEnd && (
                         <p className="text-sm text-muted-foreground">
                           Acesso até:{" "}
-                          {new Date(plan.currentPeriodEnd).toLocaleDateString()}
+                          {new Date(plan.paymentEnd).toLocaleDateString()}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground mt-1">
-                        Limite de barbearias: {shops.length} / {plan.plan.shopLimit}
+                        Limite de barbearias: {shops.length} / {plan.shopLimit}
                       </p>
                     </div>
                     <Button size="sm" variant="outline" asChild className="mt-4 md:mt-0 self-start md:self-center">

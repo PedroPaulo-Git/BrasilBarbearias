@@ -19,10 +19,12 @@ async function createCheckoutPreference(req: AuthenticatedRequest, res: Response
     if (!user || !plan) return res.status(404).json({ error: 'Usuário ou Plano não encontrado' });
     if (!user.name) return res.status(400).json({ error: 'Nome do usuário é necessário' });
 
-    const subscription = await prisma.subscription.upsert({
-      where: { userId },
-      update: { planId, status: 'pending' },
-      create: { userId, planId, status: 'pending' },
+    const subscription = await prisma.subscription.create({
+      data: {
+        userId,
+        planId,
+        status: 'pending',
+      },
     });
 
     const notificationUrl = `${process.env.API_BASE_URL}/payments/webhook`;
@@ -47,7 +49,7 @@ async function createCheckoutPreference(req: AuthenticatedRequest, res: Response
       data: { mercadoPagoPreferenceId: preference.id },
     });
 
-    return res.json({ preferenceId: preference.id });
+    return res.json({ preferenceId: preference.id, subscriptionId: subscription.id });
 
   } catch (error) {
     console.error('Erro ao criar preferência de checkout:', error);
@@ -86,6 +88,18 @@ async function handleWebhook(req: Request, res: Response) {
                 },
               });
               console.log(`[Webhook] Assinatura ${subscription.id} ativada com sucesso.`);
+              
+              await prisma.subscription.updateMany({
+                where: {
+                  userId: subscription.userId,
+                  status: 'active',
+                  id: { not: subscriptionId },
+                },
+                data: {
+                  status: 'inactive',
+                }
+              });
+
            } else if (payment.status) {
              await prisma.subscription.update({
                where: { id: subscriptionId },
@@ -108,20 +122,20 @@ async function handleWebhook(req: Request, res: Response) {
 // Confirma pagamento direto e ativa assinatura
 async function confirmPayment(req: AuthenticatedRequest, res: Response) {
   try {
-    const { planId, paymentData } = req.body;
+    const { planId, paymentData, subscriptionId } = req.body;
     const userId = req.user?.id;
     console.log('confirmPayment data ->', req.body);
     if (!userId) return res.status(401).json({ error: 'Não autorizado' });
-    if (!planId || !paymentData) return res.status(400).json({ error: 'planId e paymentData são obrigatórios' });
+    if (!planId || !paymentData || !subscriptionId) return res.status(400).json({ error: 'planId, paymentData e subscriptionId são obrigatórios' });
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const plan = await prisma.plan.findUnique({ where: { id: planId } });
     if (!user || !plan) return res.status(404).json({ error: 'Usuário ou Plano não encontrado' });
 
-    // Busca (ou cria) assinatura pendente
-    let subscription = await prisma.subscription.findUnique({ where: { userId } });
+    // Busca a assinatura pendente criada no checkout
+    const subscription = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
     if (!subscription) {
-      subscription = await prisma.subscription.create({ data: { userId, planId, status: 'pending' } });
+      return res.status(404).json({ error: 'Assinatura não encontrada' });
     }
 
     const paymentResult = await createDirectPayment({
@@ -149,6 +163,18 @@ async function confirmPayment(req: AuthenticatedRequest, res: Response) {
           mercadoPagoPaymentId: String(paymentResult.id),
           currentPeriodStart: startDate,
           currentPeriodEnd: endDate,
+        },
+      });
+
+      // Desativa outras assinaturas ativas do mesmo usuário
+      await prisma.subscription.updateMany({
+        where: {
+          userId: userId,
+          status: 'active',
+          id: { not: subscription.id },
+        },
+        data: {
+          status: 'inactive',
         },
       });
     } else {

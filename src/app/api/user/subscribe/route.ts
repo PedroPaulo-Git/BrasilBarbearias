@@ -35,16 +35,34 @@ export async function GET() {
     // if (!sub || !sub.plan) {
     //   return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
     // }
-    const sub = user.subscriptions.find(s => s.status === 'active' && (!s.currentPeriodEnd || new Date(s.currentPeriodEnd) > new Date()));
+    const activeSub = user.subscriptions.find(s => 
+      s.status === 'active' &&
+      (!s.currentPeriodEnd || new Date(s.currentPeriodEnd) > new Date()) &&
+      s.plan
+    );
+    const pendingSub = user.subscriptions.find(s => 
+      s.status === 'pending' &&
+      s.plan
+    );
+    // const sub = user.subscriptions.find(s => {
+    //   const isValidStatus = ['active', 'pending'].includes(s.status);
+    //   const notExpired = !s.currentPeriodEnd || new Date(s.currentPeriodEnd) > new Date();
+    //   const hasPlan = !!s.plan?.price;
+    const sub = activeSub || pendingSub;
 
+    console.log('sub ->', sub)
     if (!sub) {
       return NextResponse.json({ name: "Nenhum plano ativo", status: "sem assinatura" });
     }
-    
+    console.log('sub ->', sub)
     return NextResponse.json({
+      id: sub.id,
       name: sub.plan.name,
       status: sub.status,
+      price: sub.plan.price,
       paymentEnd: sub.currentPeriodEnd,
+      paymentStart: sub.currentPeriodStart,
+      planId: sub.planId,
       shopLimit: sub.plan.shopLimit,
     });
   } catch (error: any) {
