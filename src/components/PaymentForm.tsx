@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Payment, initMercadoPago } from "@mercadopago/sdk-react";
+import { CheckCircle2, Clock, XCircle } from "lucide-react";
 
 const MERCADO_PAGO_PUBLIC_KEY = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
 
@@ -9,19 +10,21 @@ interface PaymentFormProps {
   planId: string;
   planPrice: number;
   onPaymentSuccess: () => void;
+  onClose: () => void;
 }
 
 export const PaymentForm = ({
   planId,
   planPrice,
   onPaymentSuccess,
+  onClose,
 }: PaymentFormProps) => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
+  const [paymentResult, setPaymentResult] = useState<"success" | "pending" | "error" | null>(null);
   const preferenceCreationInProgress = useRef(false);
 
   useEffect(() => {
@@ -59,8 +62,8 @@ export const PaymentForm = ({
             data.error || "Falha ao criar a preferência de pagamento."
           );
         }
-        if (!data.preferenceId) {
-          throw new Error("preferenceId não recebido do backend.");
+        if (!data.preferenceId || !data.subscriptionId) {
+          throw new Error("preferenceId ou subscriptionId não recebido do backend.");
         }
         console.log("data createPreference frontend->", data);
         setPreferenceId(data.preferenceId);
@@ -76,6 +79,15 @@ export const PaymentForm = ({
 
     createPreference();
   }, [planId]);
+  
+  useEffect(() => {
+    if (paymentResult) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentResult, onClose]);
 
   const paymentConfig = {
     customization: {
@@ -145,14 +157,11 @@ export const PaymentForm = ({
         // Verifica o status do pagamento
         if (result.status === "approved") {
           console.log("✅ Pagamento aprovado!");
-          setPaymentSuccess(true);
+          setPaymentResult('success');
           onPaymentSuccess();
-        } else if (result.status === "pending") {
+        } else if (result.status === "pending" || result.status === 'in_process') {
           console.log("⏳ Pagamento pendente");
-          // Você pode mostrar uma mensagem diferente para pagamentos pendentes
-          setError(
-            "Pagamento em processamento. Você receberá uma confirmação em breve."
-          );
+          setPaymentResult('pending');
         } else {
           console.log("❌ Pagamento rejeitado:", result.status_detail);
           setError(
@@ -160,12 +169,14 @@ export const PaymentForm = ({
               result.status_detail || "Tente novamente"
             }`
           );
+          setPaymentResult('error');
         }
       } catch (err: any) {
         console.error("❌ Erro no processamento:", err);
         setError(
           err.message || "Erro ao processar pagamento. Tente novamente."
         );
+        setPaymentResult('error');
       } finally {
         setIsProcessing(false);
       }
@@ -180,6 +191,7 @@ export const PaymentForm = ({
 
       // Se for erro de verdade, aí sim mostra pro usuário
       setError("Ocorreu um erro no formulário de pagamento. Tente novamente.");
+      setPaymentResult('error');
       setIsProcessing(false);
     },
   };
@@ -190,7 +202,7 @@ export const PaymentForm = ({
     );
   }
 
-  if (error) {
+  if (error && !preferenceId) {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 mb-4">{error}</p>
@@ -203,6 +215,37 @@ export const PaymentForm = ({
       </div>
     );
   }
+  
+  if (paymentResult) {
+    let icon, title, message;
+
+    switch (paymentResult) {
+      case 'success':
+        icon = <CheckCircle2 className="h-16 w-16 text-green-500" />;
+        title = "Pagamento Aprovado!";
+        message = "Seu plano foi atualizado com sucesso. Bom proveito!";
+        break;
+      case 'pending':
+        icon = <Clock className="h-16 w-16 text-yellow-500" />;
+        title = "Pagamento Pendente";
+        message = "Assim que o pagamento for confirmado, seu plano será ativado. Você receberá um e-mail.";
+        break;
+      default: // 'error'
+        icon = <XCircle className="h-16 w-16 text-red-500" />;
+        title = "Falha no Pagamento";
+        message = error || "Não foi possível processar seu pagamento. Por favor, tente novamente.";
+        break;
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-8 space-y-4">
+        {icon}
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <p className="text-muted-foreground">{message}</p>
+      </div>
+    );
+  }
+
 
   if (isProcessing) {
     return (
@@ -214,23 +257,15 @@ export const PaymentForm = ({
   }
 
   return (
-    <div className="py-4">
-      {paymentSuccess ? (
-        <p className="text-green-600 text-center font-semibold">
-          ✅ Pagamento aprovado com sucesso!
-        </p>
-      ) : (
-        <div>
-          {preferenceId && !paymentSuccess && (
-            <Payment
-              initialization={paymentConfig.initialization}
-              customization={paymentConfig.customization}
-              onReady={paymentConfig.onReady}
-              onSubmit={paymentConfig.onSubmit}
-              onError={paymentConfig.onError}
-            />
-          )}
-        </div>
+    <div>
+      {preferenceId && (
+        <Payment
+          initialization={paymentConfig.initialization}
+          customization={paymentConfig.customization}
+          onReady={paymentConfig.onReady}
+          onSubmit={paymentConfig.onSubmit}
+          onError={paymentConfig.onError}
+        />
       )}
     </div>
   );

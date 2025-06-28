@@ -35,7 +35,6 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       if (!res.ok) throw new Error("Failed to fetch subscription");
       const data = await res.json();
       console.log('data fetchUserSubscription ->', data)
-      // The API returns a simplified object. Map it to the same shape used in this component.
     //   setSubscription((prev) => ({
     //     ...prev,
     //     status: data.status,
@@ -159,7 +158,7 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       </div>
       
       <Dialog open={!!selectedPlanId} onOpenChange={handleDialogClose}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Finalizar Assinatura</DialogTitle>
             <DialogDescription>
@@ -171,6 +170,7 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
               planId={selectedPlan.id}
               planPrice={selectedPlan.price}
               onPaymentSuccess={handlePaymentCompletion}
+              onClose={handleDialogClose}
             />
           )}
         </DialogContent>

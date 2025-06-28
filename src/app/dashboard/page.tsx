@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Clock, MapPin, Users } from "lucide-react"
+import { Plus, Clock, MapPin, Users, Loader2 } from "lucide-react"
 import { GET } from '@/app/api/user/subscribe/route'
 import Link from "next/link"
 import { hasActiveSubscription } from "@/lib/subscriptionUtils"
+import { ImageUploader } from "@/components/ImageUploader"
+import { Textarea } from "@/components/ui/textarea"
 
 interface Shop {
   id: string
@@ -36,8 +38,13 @@ export default function DashboardPage() {
     address: "",
     openTime: "09:00",
     closeTime: "18:00",
-    serviceDuration: 60
+    serviceDuration: 60,
+    description: "",
+    instagramUrl: "",
+    whatsappNumber: "",
+    mapUrl: "",
   })
+  const [gallery, setGallery] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [plan, setPlan] = useState<any>(null);
   const [hasActiveSub, setHasActiveSub] = useState(false);
@@ -92,12 +99,19 @@ export default function DashboardPage() {
     setSubmitting(true)
 
     try {
+      const { whatsappNumber, ...rest } = formData;
+      const fullData = {
+        ...rest,
+        galleryImages: gallery,
+        whatsappUrl: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}` : undefined,
+      };
+
       const response = await fetch("/api/shops", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(fullData),
       })
 
       if (response.ok) {
@@ -106,8 +120,13 @@ export default function DashboardPage() {
           address: "",
           openTime: "09:00",
           closeTime: "18:00",
-          serviceDuration: 60
+          serviceDuration: 60,
+          description: "",
+          instagramUrl: "",
+          whatsappNumber: "",
+          mapUrl: "",
         })
+        setGallery([]);
         setShowForm(false)
         fetchShops()
       }
@@ -120,7 +139,11 @@ export default function DashboardPage() {
 
   // Redirecionar se não estiver logado
   if (status === "loading") {
-    return <div>Carregando...</div>
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   if (status === "unauthenticated") {
@@ -170,7 +193,7 @@ export default function DashboardPage() {
                       {plan.paymentEnd && (
                         <p className="text-sm text-muted-foreground">
                           Acesso até:{" "}
-                          {new Date(plan.paymentEnd).toLocaleDateString()}
+                          {new Date(plan.paymentEnd).toLocaleDateString('pt-BR')}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground mt-1">
@@ -264,6 +287,45 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição (Opcional)</Label>
+                  <Textarea id="description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Fale sobre sua barbearia..." />
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="instagramUrl">Instagram (Opcional)</Label>
+                    <Input id="instagramUrl" value={formData.instagramUrl} onChange={(e) => setFormData({...formData, instagramUrl: e.target.value})} placeholder="https://instagram.com/..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsappNumber">WhatsApp (Apenas Números)</Label>
+                    <Input id="whatsappNumber" value={formData.whatsappNumber} onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})} placeholder="5511999998888" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="mapUrl">Link do Google Maps (Opcional)</Label>
+                  <Input id="mapUrl" value={formData.mapUrl} onChange={(e) => setFormData({...formData, mapUrl: e.target.value})} placeholder="https://maps.app.goo.gl/..." />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Galeria de Fotos (Opcional, até 3)</Label>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                      {gallery.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img src={url} alt={`Foto ${i + 1}`} className="rounded-md object-cover h-24 w-full" />
+                          <button type="button" onClick={() => setGallery(gallery.filter(g => g !== url))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs">&times;</button>
+                        </div>
+                      ))}
+                  </div>
+                  {gallery.length < 3 && (
+                    <ImageUploader
+                      onUploadComplete={(res) => setGallery([...gallery, ...res.map(r => r.url)])}
+                      onUploadError={(err) => console.error("Upload Error:", err)}
+                    />
+                  )}
+                </div>
+
                 <div className="flex gap-2">
                   <Button type="submit" disabled={submitting}>
                     {submitting ? "Criando..." : "Criar Barbearia"}
@@ -282,8 +344,8 @@ export default function DashboardPage() {
         )}
 
         {loading ? (
-          <div className="text-center py-8">
-            <p>Carregando suas barbearias...</p>
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : shops.length === 0 ? (
           <Card>

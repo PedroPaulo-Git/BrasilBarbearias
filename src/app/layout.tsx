@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import { Toaster } from 'sonner'
 import Footer from "@/components/Footer";
 import { SessionProvider } from "@/components/SessionProvider";
 import Script from "next/script";
@@ -25,11 +26,13 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-background text-foreground`}>
         <SessionProvider>
+          <Toaster />
           <Header />
-          <main className="pt-20">
+          <main className="pt-22">
             {children}
           </main>
           <Footer />
+          <Toaster />
         </SessionProvider>
         <Script src="https://sdk.mercadopago.com/js/v2" />
       </body>

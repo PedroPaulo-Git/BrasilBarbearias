@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
-import { generateUniqueSlug, isValidTimeFormat } from "@/lib/utils"
+import { slugify, generateUniqueSlug, isValidTimeFormat } from "@/lib/utils"
 import { authOptions } from "@/lib/authOptions"
 import { canCreateShop } from "@/lib/subscriptionUtils"
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, address, openTime, closeTime, serviceDuration } = await request.json()
+    const { name, address, openTime, closeTime, serviceDuration, description, galleryImages, instagramUrl, whatsappUrl, mapUrl } = await request.json()
 
     if (!name || !openTime || !closeTime) {
       return NextResponse.json(
@@ -80,8 +80,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gerar slug único
-    const slug = generateUniqueSlug(name)
+    // Gerar slug com a nova lógica
+    let slug = slugify(name);
+    const shopWithSameSlug = await prisma.shop.findUnique({ where: { slug } });
+
+    if (shopWithSameSlug) {
+      slug = generateUniqueSlug(name);
+    }
 
     const shop = await prisma.shop.create({
       data: {
@@ -91,6 +96,11 @@ export async function POST(request: NextRequest) {
         openTime,
         closeTime,
         serviceDuration: serviceDuration || 60,
+        description,
+        galleryImages,
+        instagramUrl,
+        whatsappUrl,
+        mapUrl,
         ownerId: session.user.id
       }
     })

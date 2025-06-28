@@ -1,4 +1,3 @@
-
 import { prisma } from "@/lib/prisma";
 import { Subscription } from "@prisma/client";
 import { useEffect, useState } from "react";
@@ -48,8 +47,8 @@ export async function canCreateShop(userId: string): Promise<boolean> {
     include: {
       shops: true,
       subscriptions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
+        where: { status: 'active' },
+        orderBy: { createdAt: 'desc' },
         include: { plan: true },
       },
     },
@@ -61,17 +60,14 @@ export async function canCreateShop(userId: string): Promise<boolean> {
   }
   if (user.isAdmin) return true;
 
-  const sub = user.subscriptions[0];
+  const sub = user.subscriptions.find(s => s.status === 'active');
   const now = new Date();
-  const active =
-    sub?.status === "active" &&
-    (!sub.currentPeriodEnd || sub.currentPeriodEnd > now);
-
-  if (!active) {
-    console.log("[canCreateShop] assinatura não está ativa");
+  
+  if (!sub || !(sub.currentPeriodEnd && sub.currentPeriodEnd > now)) {
+    console.log("[canCreateShop] Nenhuma assinatura ativa e válida encontrada.");
     return false;
   }
-
+  
   const shopLimit = sub.plan?.shopLimit ?? 0;
   const canCreate = user.shops.length < shopLimit;
   console.log(

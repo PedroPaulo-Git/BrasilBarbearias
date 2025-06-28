@@ -37,6 +37,15 @@ model Shop {
   openTime     String        // Format: "HH:MM"
   closeTime    String        // Format: "HH:MM"
   serviceDuration Int        @default(60) // Duration in minutes
+  
+  // New optional fields
+  description   String?
+  galleryImages String[]      @default([])
+  instagramUrl  String?
+  whatsappUrl   String?
+  mapUrl        String?
+  rating        Float?        // Admin-set rating
+
   ownerId      String
   owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())

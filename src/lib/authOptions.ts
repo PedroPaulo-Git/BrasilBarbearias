@@ -46,6 +46,7 @@ export const authOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          isAdmin: user.isAdmin,
         } as User;
       }
     })
@@ -57,23 +58,23 @@ export const authOptions = {
     signIn: "/auth/signin"
   },
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: User & { id: string } }) {
+    async jwt({ token, user }: { token: JWT; user?: User & { id: string; isAdmin?: boolean } }) {
       if (user) {
-
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.isAdmin = user.isAdmin;
       }
    
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (token) {
-       
         session.user = {
           id: token.id as string,
           name: token.name,
           email: token.email,
+          isAdmin: token.isAdmin,
         };
 
         const secret = process.env.NEXTAUTH_SECRET;

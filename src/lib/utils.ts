@@ -1,5 +1,8 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { customAlphabet } from 'nanoid';
+
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 8);
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -18,8 +21,8 @@ export function slugify(text: string): string {
 // Função para gerar slug único com timestamp
 export function generateUniqueSlug(text: string): string {
   const baseSlug = slugify(text)
-  const timestamp = Date.now().toString(36)
-  return `${baseSlug}-${timestamp}`
+  const uniqueId = nanoid()
+  return `${baseSlug}-${uniqueId}`
 }
 
 // Função para validar horário de funcionamento
