@@ -35,7 +35,11 @@ import {
   Image as ImageIcon,
   Star,
   X,
-  ChevronDown
+  ChevronDown,
+  TrendingUp,
+  TrendingDown,
+  Check,
+  Users
 } from "lucide-react";
 import { format, parseISO, isToday, isThisWeek, isThisMonth, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -324,6 +328,24 @@ export default function ManageShopPage({
     return dateMatch;
   });
 
+  // Filtro de data para as estatísticas
+  const statsAppointments = appointments.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    switch (dateFilter) {
+      case "yesterday":
+        return isYesterday(appointmentDate);
+      case "today":
+        return isToday(appointmentDate);
+      case "week":
+        return isThisWeek(appointmentDate);
+      case "month":
+        return isThisMonth(appointmentDate);
+      case "all":
+      default:
+        return true;
+    }
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -494,11 +516,17 @@ Obrigado! ✂️`,
   };
 
   const stats = {
-    total: appointments.filter((a) => a.status !== "cancelled").length,
-    confirmed: appointments.filter((a) => a.status === "confirmed").length,
-    pending: appointments.filter((a) => a.status === "pending").length,
-    cancelled: appointments.filter((a) => a.status === "cancelled").length,
-    completed: appointments.filter((a) => a.status === "completed").length,
+    total: statsAppointments.length,
+    confirmed: statsAppointments.filter(a => a.status === 'confirmed').length,
+    pending: statsAppointments.filter(a => a.status === 'pending').length,
+    cancelled: statsAppointments.filter(a => a.status === 'cancelled').length,
+    completed: statsAppointments.filter(a => a.status === 'completed').length,
+  };
+
+  const performanceMetrics = {
+    completionRate: (stats.total > 0 ? (stats.completed / (stats.total - stats.cancelled - stats.pending)) * 100 : 0).toFixed(1),
+    confirmationRate: (stats.pending + stats.confirmed > 0 ? (stats.confirmed / (stats.pending + stats.confirmed)) * 100 : 0).toFixed(1),
+    cancellationRate: (stats.total > 0 ? (stats.cancelled / stats.total) * 100 : 0).toFixed(1)
   };
 
   const handleRemoveShop = async () => {
@@ -909,55 +937,133 @@ Obrigado! ✂️`,
         )}
 
         {activeTab === "stats" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total de Agendamentos
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm font-medium">Filtrar Período:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={dateFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter("all")}
+                >
+                  Todos
+                </Button>
+                <Button
+                  variant={dateFilter === "yesterday" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter("yesterday")}
+                >
+                  Ontem
+                </Button>
+                <Button
+                  variant={dateFilter === "today" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter("today")}
+                >
+                  Hoje
+                </Button>
+                <Button
+                  variant={dateFilter === "week" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter("week")}
+                >
+                  Esta Semana
+                </Button>
+                <Button
+                  variant={dateFilter === "month" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter("month")}
+                >
+                  Este Mês
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total de Agendamentos
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Confirmados
+                  </CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats.confirmed}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {stats.pending}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Realizados
+                  </CardTitle>
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.completed}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Confirmados
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
+              <CardHeader>
+                <CardTitle>Métricas de Performance</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.confirmed}
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                    <TrendingUp className="h-4 w-4" />
+                    <span>Taxa de Conclusão</span>
+                  </div>
+                  <div className="text-2xl font-bold mt-1">{performanceMetrics.completionRate}%</div>
+                  <p className="text-xs text-slate-500 text-center mt-1">Dos agendamentos ativos, quantos foram concluídos.</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">
-                  {stats.pending}
+                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                    <Check className="h-4 w-4" />
+                    <span>Taxa de Confirmação</span>
+                  </div>
+                  <div className="text-2xl font-bold mt-1">{performanceMetrics.confirmationRate}%</div>
+                  <p className="text-xs text-slate-500 text-center mt-1">Dos agendamentos pendentes, quantos foram confirmados.</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Realizados
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.completed}
+                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                    <span>Taxa de Cancelamento</span>
+                  </div>
+                  <div className="text-2xl font-bold mt-1 text-red-500">{performanceMetrics.cancellationRate}%</div>
+                  <p className="text-xs text-slate-500 text-center mt-1">Do total de agendamentos, quantos foram cancelados.</p>
                 </div>
               </CardContent>
             </Card>

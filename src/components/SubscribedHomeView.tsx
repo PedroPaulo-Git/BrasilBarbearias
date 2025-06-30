@@ -8,7 +8,18 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, HelpCircle, Users, Zap } from "lucide-react";
+import {
+  BarChart,
+  BarChart4,
+  HelpCircle,
+  LayoutGrid,
+  LinkIcon,
+  Search,
+  Settings2,
+  Sparkles,
+  Users,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 
 export const SubscribedHomeView = () => (
@@ -29,10 +40,10 @@ export const SubscribedHomeView = () => (
             clique.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button asChild size="lg" className="font-bold">
+            <Button asChild size="lg" variant="secondary" className="font-bold">
               <Link href="/dashboard">Acessar Meu Painel</Link>
             </Button>
-            <Button asChild size="lg" variant="secondary" className="font-bold">
+            <Button asChild size="lg"  className="font-bold">
               <Link href="/plans">Explorar Upgrades de Plano</Link>
             </Button>
           </div>
@@ -41,21 +52,20 @@ export const SubscribedHomeView = () => (
 
       <section id="features" className="py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-              Desbloqueie o Potencial Máximo.{" "}
-              <span className="text-primary">
-                Ferramentas Para Quem Pensa Grande.
-              </span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Seu plano atual é só o começo. Veja o que os planos superiores
-              podem fazer por você e sua barbearia.
-            </p>
-          </div>
+        <div className="text-center max-w-3xl mx-auto">
+  <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+    Aproveite o Melhor do Seu Plano.{" "}
+    <span className="text-primary">E Veja Até Onde Você Pode Chegar.</span>
+  </h2>
+  <p className="mt-4 text-lg text-muted-foreground">
+    Você já conta com ferramentas poderosas para atrair mais clientes e organizar sua barbearia.  
+    Mas isso é só o começo. Descubra recursos avançados que estão a caminho — prontos para levar seu negócio ainda mais longe.
+  </p>
+</div>
+
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+            {/* <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <BarChart className="w-8 h-8 text-primary" />
@@ -102,6 +112,102 @@ export const SubscribedHomeView = () => (
                 <p className="text-muted-foreground">
                   Expandiu? Gerencie todas as suas unidades a partir de um único
                   painel, com relatórios consolidados.
+                </p>
+              </CardContent>
+            </Card> */}
+            <Card className="hover:shadow-lg hover:border-yellow-700 transition-all duration-300 border-2 border-yellow-400">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Sparkles className="w-8 h-8 text-yellow-500" />
+                  <span className="text-xl">Plano Avançado Exclusivo</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                Sua barbearia em destaque logo na entrada do app.
+Gerencie quem atende, defina preços, horários e ofereça cupons.
+Futuro com pagamentos direto pelo sistema.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <LinkIcon className="w-8 h-8 text-primary" />
+                  <span className="text-xl">Agendamentos Sem WhatsApp</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Seus clientes não precisam te chamar no WhatsApp para agendar.
+                  Basta acessar seu link exclusivo e escolher o melhor horário.
+                  Rápido, direto e profissional.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <LayoutGrid className="w-8 h-8 text-primary" />
+                  <span className="text-xl">Organização Total</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Atendeu alguém fora do sistema? Sem problemas. Você pode
+                  bloquear manualmente um horário para manter sua agenda
+                  completa e gerar estatísticas ainda mais precisas.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <BarChart4 className="w-8 h-8 text-primary" />
+                  <span className="text-xl">Estatísticas de Clientes</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Veja quantos clientes novos você atendeu, quantos voltaram, e
+                  quais dias são os mais movimentados. Tenha controle e
+                  inteligência para crescer.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Search className="w-8 h-8 text-primary" />
+                  <span className="text-xl">Descubra Novos Clientes</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Barbearias com muitos agendamentos aparecem em destaque quando
+                  alguém procura uma barbearia próxima na nossa plataforma. Mais
+                  visibilidade, mais agendamentos.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Settings2 className="w-8 h-8 text-primary" />
+                  <span className="text-xl">Pronto Para Crescer</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Em breve: você poderá definir preços, serviços (como barba,
+                  cabelo, combo etc) e deixar tudo pronto para que o cliente
+                  escolha exatamente o que quer. Exclusivo para assinantes do
+                  plano Intermediário.
                 </p>
               </CardContent>
             </Card>

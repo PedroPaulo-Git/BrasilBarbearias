@@ -386,7 +386,7 @@ export default function DashboardPage() {
                   <CardTitle className="flex items-center justify-between">
                     <span>{shop.name}</span>
                     <span className="text-sm text-muted-foreground">
-                      {shop._count.appointments} agendamentos
+                      {shop._count.appointments} agendamentos ativos
                     </span>
                   </CardTitle>
                 </CardHeader>

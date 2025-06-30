@@ -24,7 +24,13 @@ export async function GET() {
       include: {
         _count: {
           select: {
-            appointments: true
+            appointments: {
+              where: {
+                status: {
+                  in: ['pending', 'confirmed']
+                }
+              }
+            }
           }
         }
       },

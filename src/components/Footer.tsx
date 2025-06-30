@@ -28,8 +28,9 @@ export default function Footer() {
             <ul className="space-y-2">
               <li><Link href="/#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">Funcionalidades</Link></li>
               <li><Link href="/shops" className="text-sm text-muted-foreground hover:text-primary transition-colors">Encontrar Barbearias</Link></li>
-              <li><Link href="/auth/signup" className="text-sm text-muted-foreground hover:text-primary transition-colors">Cadastrar Negócio</Link></li>
-              <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">Política de Privacidade</Link></li>
+              {/* <li><Link href="/auth/signup" className="text-sm text-muted-foreground hover:text-primary transition-colors">Cadastrar Negócio</Link></li> */}
+              <li><Link href="#privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">Política de Privacidade</Link></li>
+              <li><Link href="https://wa.me/558199049803?text=Sou%20o%20criador%20da%20Brasil%20Barbearias%20e%20gostaria%20de%20um%20suporte%20para%20minha%20plataforma." className="text-sm text-muted-foreground hover:text-primary transition-colors">Suporte</Link></li>
             </ul>
           </div>
 
@@ -39,15 +40,15 @@ export default function Footer() {
               Siga-nos
             </h3>
             <div className="flex items-center gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              <Link href="https://wa.me/558199049803?text=Sou%20o%20criador%20da%20Brasil%20Barbearias%20e%20gostaria%20de%20um%20suporte%20para%20minha%20plataforma." className="text-muted-foreground hover:text-primary transition-colors">
                 <Twitter className="h-5 w-5" />
                 <span className="sr-only">Twitter</span>
               </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              <Link href="https://wa.me/558199049803?text=Sou%20o%20criador%20da%20Brasil%20Barbearias%20e%20gostaria%20de%20um%20suporte%20para%20minha%20plataforma." className="text-muted-foreground hover:text-primary transition-colors">
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
               </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              <Link href="https://wa.me/558199049803?text=Sou%20o%20criador%20da%20Brasil%20Barbearias%20e%20gostaria%20de%20um%20suporte%20para%20minha%20plataforma." className="text-muted-foreground hover:text-primary transition-colors">
                 <Github className="h-5 w-5" />
                 <span className="sr-only">GitHub</span>
               </Link>
