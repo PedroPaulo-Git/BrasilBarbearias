@@ -48,7 +48,7 @@ export async function POST(
         shopId: shop.id,
         clientContact: phoneNumbers,
         status: {
-          not: 'cancelled'
+          in: ['pending', 'confirmed']
         }
       },
       select: {

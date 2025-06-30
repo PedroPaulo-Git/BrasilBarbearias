@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { subDays } from 'date-fns';
+// import { prisma } from '../../prisma/client';
 
-const prisma = new PrismaClient();
+const prismaClient = new PrismaClient();
 
 /**
  * Cancels subscriptions that are active but have a payment that is more than 30 days overdue.
@@ -15,7 +16,7 @@ export const cancelOverdueSubscriptions = async () => {
 
   // Find subscriptions that are active and have not been successfully renewed in 30 days.
   // This is determined by looking at the end of the current billing period.
-  const overdueSubscriptions = await prisma.subscription.findMany({
+  const overdueSubscriptions = await prismaClient.subscription.findMany({
     where: {
       status: 'active',
       currentPeriodEnd: {
@@ -33,7 +34,7 @@ export const cancelOverdueSubscriptions = async () => {
 
   for (const sub of overdueSubscriptions) {
     try {
-      await prisma.subscription.update({
+      await prismaClient.subscription.update({
         where: { id: sub.id },
         data: { status: 'canceled' },
       });
@@ -44,4 +45,15 @@ export const cancelOverdueSubscriptions = async () => {
   }
 
   console.log('Finished job: cancelOverdueSubscriptions.');
-}; 
+};
+
+// Helper para buscar o plano ativo do usuário
+export async function getUserPlan(userId: string) {
+  return prismaClient.subscription.findFirst({
+    where: {
+      userId,
+      status: 'active',
+    },
+    include: { plan: true },
+  });
+} 

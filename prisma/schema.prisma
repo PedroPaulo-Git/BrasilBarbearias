@@ -51,6 +51,7 @@ model Shop {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
+  blockedTimes BlockedTime[]
 
   @@map("shops")
 }
@@ -93,4 +94,17 @@ model Subscription {
 
   user User @relation(fields: [userId], references: [id])
   plan Plan @relation(fields: [planId], references: [id])
+}
+
+model BlockedTime {
+  id        String   @id @default(cuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  date      DateTime // Apenas a data (sem hora)
+  startTime String   // "HH:MM"
+  endTime   String   // "HH:MM"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("blocked_times")
 }

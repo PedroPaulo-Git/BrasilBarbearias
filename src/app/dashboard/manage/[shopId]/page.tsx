@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -140,37 +140,52 @@ export default function ManageShopPage({
   const [initialGallery, setInitialGallery] = useState<{ key: string, url: string }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const submitted = useRef(false);
-  const fetchShopAndAppointments = async () => {
-    const resolvedParams = await params;
-    const shopId = resolvedParams.shopId;
-    
-    if (!shopId) return; // Só executa se shopId estiver disponível
-    
+
+  const fetchAppointmentsOnly = useCallback(async (shopId: string) => {
+    console.log("⏱️ Polling for new appointments...");
+    try {
+      const apptRes = await fetch(
+        `/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`
+      );
+      if (!apptRes.ok) {
+        // Silently fail or log to console without disrupting the user
+        console.error("Polling failed: Could not fetch appointments.");
+        return;
+      }
+      const apptData = await apptRes.json();
+      setAppointments(apptData); // Update only the appointments list
+    } catch (err) {
+      console.error("Error during appointment polling:", err);
+    }
+  }, [showCancelled]); // Dependency on showCancelled ensures the poll uses the latest filter
+
+  const fetchShopAndAppointmentsInitial = useCallback(async (shopId: string) => {
     setLoading(true);
     setError(null);
     try {
-      // 1. Buscar dados da barbearia por slug
-      const shopResponse = await fetch(`/api/shops/${shopId}`);
-      if (!shopResponse.ok) {
-        throw new Error("Barbearia não encontrada ou sem permissão.");
-      }
-      const shopData = await shopResponse.json();
-      setShop(shopData);
+      // Fetch shop data and initial appointments in parallel for speed
+      const [shopResponse, apptResponse] = await Promise.all([
+        fetch(`/api/shops/${shopId}`),
+        fetch(`/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`)
+      ]);
   
-      // 2. Popular profileData
+      if (!shopResponse.ok) throw new Error("Barbershop not found or permission denied.");
+      if (!apptResponse.ok) throw new Error("Failed to fetch initial appointments.");
+      
+      const shopData = await shopResponse.json();
+      const apptData = await apptResponse.json();
+  
+      // Set all state related to the shop
+      setShop(shopData);
       setProfileData({
         name: shopData.name || "",
         address: shopData.address || "",
         description: shopData.description || "",
         instagramUrl: shopData.instagramUrl || "",
-        whatsappNumber: shopData.whatsappUrl
-          ? shopData.whatsappUrl.replace(/\D/g, "")
-          : "",
+        whatsappNumber: shopData.whatsappUrl ? shopData.whatsappUrl.replace(/\D/g, "") : "",
         mapUrl: shopData.mapUrl || "",
         rating: shopData.rating || 0,
       });
-  
-      // 3. Popular galeria
       const galleryFiles = (shopData.galleryImages || []).map((url: string) => ({
         url,
         key: url.substring(url.lastIndexOf("/") + 1),
@@ -178,63 +193,102 @@ export default function ManageShopPage({
       setGallery(galleryFiles);
       setInitialGallery(galleryFiles);
   
-      // 4. Buscar agendamentos
-      const apptRes = await fetch(
-        `/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`
-      );
-      if (!apptRes.ok) {
-        throw new Error("Falha ao buscar agendamentos.");
-      }
-      const apptData = await apptRes.json();
+      // Set the initial appointments
       setAppointments(apptData);
+      
     } catch (err: any) {
-      console.error("Erro ao carregar dados:", err);
-      setError(err.message || "Erro inesperado.");
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showCancelled]); 
 
-    // 4. useEffect corrigido para chamar a função
-    useEffect(() => {
-      fetchShopAndAppointments();
-    }, [shop?.slug, showCancelled]); 
+  // const fetchShopAndAppointments = async () => {
+  //   const resolvedParams = await params;
+  //   const shopId = resolvedParams.shopId;
+    
+  //   if (!shopId) return; // Só executa se shopId estiver disponível
+    
+  //   setLoading(true);
+  //   setError(null);
+  //   try {
+  //     // 1. Buscar dados da barbearia por slug
+  //     const shopResponse = await fetch(`/api/shops/${shopId}`);
+  //     if (!shopResponse.ok) {
+  //       throw new Error("Barbearia não encontrada ou sem permissão.");
+  //     }
+  //     const shopData = await shopResponse.json();
+  //     setShop(shopData);
+  
+  //     // 2. Popular profileData
+  //     setProfileData({
+  //       name: shopData.name || "",
+  //       address: shopData.address || "",
+  //       description: shopData.description || "",
+  //       instagramUrl: shopData.instagramUrl || "",
+  //       whatsappNumber: shopData.whatsappUrl
+  //         ? shopData.whatsappUrl.replace(/\D/g, "")
+  //         : "",
+  //       mapUrl: shopData.mapUrl || "",
+  //       rating: shopData.rating || 0,
+  //     });
+  
+  //     // 3. Popular galeria
+  //     const galleryFiles = (shopData.galleryImages || []).map((url: string) => ({
+  //       url,
+  //       key: url.substring(url.lastIndexOf("/") + 1),
+  //     }));
+  //     setGallery(galleryFiles);
+  //     setInitialGallery(galleryFiles);
+  
+  //     // 4. Buscar agendamentos
+  //     const apptRes = await fetch(
+  //       `/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`
+  //     );
+  //     if (!apptRes.ok) {
+  //       throw new Error("Falha ao buscar agendamentos.");
+  //     }
+  //     const apptData = await apptRes.json();
+  //     setAppointments(apptData);
+  //   } catch (err: any) {
+  //     console.error("Erro ao carregar dados:", err);
+  //     setError(err.message || "Erro inesperado.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
+  // // Remover BroadcastChannel e garantir polling confiável
+  // useEffect(() => {
+  //   fetchShopAndAppointments();
+  // }, [params, showCancelled]);
 
-    useEffect(() => {
-      const interval = setInterval(() => {
-        console.log("⏱️ Polling automático: buscando agendamentos...")
-        fetchShopAndAppointments()
-      }, 15000) // 15 segundos
-    
-      return () => clearInterval(interval)
-    }, [shop?.id, showCancelled])
-    
-    useEffect(() => {
-      const bc = new BroadcastChannel("appointments-sync")
-    
-      bc.onmessage = (event) => {
-        const { type, shopSlug } = event.data
-        if (type === "new_appointment" && shopSlug === shop?.slug) {
-          console.log("Novo agendamento detectado, atualizando lista...")
-          fetchShopAndAppointments()
-        }
-      }
-    
-      return () => {
-        bc.close()
-      }
-    }, [shop?.slug])
-    
-//   useEffect(() => {
-//   const interval = setInterval(() => {
-//     console.log("⏱️ Polling automático: buscando agendamentos...")
-//     fetchShopAndAppointments()
-//   }, 15000) // 15 segundos
-
-//   return () => clearInterval(interval)
-// }, [shop?.id, showCancelled])
-
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+  
+    const initialize = async () => {
+      const resolvedParams = await params;
+      const shopId = resolvedParams.shopId;
+      
+      if (!shopId) return;
+  
+      // 1. Perform the full, initial data load
+      await fetchShopAndAppointmentsInitial(shopId);
+  
+      // 2. Set up the polling interval to only fetch appointments
+      intervalId = setInterval(() => {
+        fetchAppointmentsOnly(shopId);
+      }, 5000); // Poll every 5 seconds
+    };
+  
+    initialize();
+  
+    // Cleanup function: this runs when the component unmounts or dependencies change
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [params, fetchShopAndAppointmentsInitial, fetchAppointmentsOnly]);
+  
   useEffect(() => {
     return () => {
       // This cleanup function runs when the component unmounts
