@@ -16,7 +16,7 @@ export async function GET(
 
     const { slug } = await params
     const { searchParams } = new URL(request.url)
-    const showCancelled = searchParams.get('showCancelled') === 'true'
+    const status = searchParams.get('status')
 
     // Verificar se a barbearia pertence ao usuário logado
     const shop = await prisma.shop.findFirst({
@@ -32,36 +32,34 @@ export async function GET(
       return NextResponse.json({ error: "Barbearia não encontrada" }, { status: 404 })
     }
 
-    // Buscar agendamentos da barbearia
-    const whereClause: any = {
-      shopId: shop.id
-    }
+    // Construir filtro dinâmico
+    const whereClause: any = { shopId: shop.id }
 
-    // Por padrão, não mostrar agendamentos cancelados
-    if (!showCancelled) {
-      whereClause.status = {
-        not: 'cancelled'
-      }
+    if (status === "active") {
+      whereClause.status = { in: ['pending', 'confirmed'] }
+    } else if (status === "cancelled") {
+      whereClause.status = "cancelled"
+    } else if (status === "completed") {
+      whereClause.status = "completed"
     }
+    // status === "all" ou não informado: não filtra por status
 
     const appointments = await prisma.appointment.findMany({
       where: whereClause,
-      orderBy: {
-        date: 'asc'
-      }
+      orderBy: { date: 'asc' }
     })
 
     // Formatar os dados para o frontend
     const formattedAppointments = appointments.map(appointment => ({
       id: appointment.id,
       date: appointment.date.toISOString().split('T')[0],
-      time: appointment.date.toTimeString().slice(0, 5), // Usar o horário real do agendamento
-      status: appointment.status, // Usar o status real do banco
-      service: 'Corte de Cabelo', // Default service
+      time: appointment.date.toTimeString().slice(0, 5),
+      status: appointment.status,
+      service: 'Corte de Cabelo',
       customer: {
         name: appointment.clientName,
         phone: appointment.clientContact,
-        email: '' // Campo vazio já que agora só usamos telefone
+        email: ''
       },
       createdAt: appointment.createdAt.toISOString()
     }))

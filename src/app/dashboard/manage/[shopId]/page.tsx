@@ -35,8 +35,9 @@ import {
   Image as ImageIcon,
   Star,
   X,
+  ChevronDown
 } from "lucide-react";
-import { format, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
+import { format, parseISO, isToday, isThisWeek, isThisMonth, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ImageUploader } from "@/components/ImageUploader";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +56,14 @@ import {
 } from "@/components/ui/alert-dialog";
 // import { useToast } from "@/components/ui/use-toast";
 import { toast } from 'sonner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Appointment {
   id: string;
@@ -88,7 +97,7 @@ interface Shop {
   mapUrl?: string | null;
   rating?: number | null;
 }
-
+type FilterType = "default" | "cancelled" | "completed" | "all";
 export default function ManageShopPage({
   params,
 }: {
@@ -102,9 +111,9 @@ export default function ManageShopPage({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "today" | "week" | "month">(
-    "all"
-  );
+  
+  const [statusFilter, setStatusFilter] = useState<"active" | "all" | "cancelled" | "completed">("active");
+  const [dateFilter, setDateFilter] = useState<"all" | "yesterday" | "today" | "week" | "month">("all");
   const [showCancelled, setShowCancelled] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "appointments" | "stats" | "settings"
@@ -141,12 +150,24 @@ export default function ManageShopPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const submitted = useRef(false);
 
+  const getAppointmentsUrl = (shopId: string, filter: string) => {
+    switch (filter) {
+      case "cancelled":
+        return `/api/shops/${shopId}/appointments?status=cancelled`;
+      case "completed":
+        return `/api/shops/${shopId}/appointments?status=completed`;
+      case "all":
+        return `/api/shops/${shopId}/appointments`;
+      case "active":
+      default:
+        return `/api/shops/${shopId}/appointments?status=active`;
+    }
+  };
+
   const fetchAppointmentsOnly = useCallback(async (shopId: string) => {
     console.log("⏱️ Polling for new appointments...");
     try {
-      const apptRes = await fetch(
-        `/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`
-      );
+      const apptRes = await fetch(getAppointmentsUrl(shopId, statusFilter));
       if (!apptRes.ok) {
         // Silently fail or log to console without disrupting the user
         console.error("Polling failed: Could not fetch appointments.");
@@ -157,7 +178,7 @@ export default function ManageShopPage({
     } catch (err) {
       console.error("Error during appointment polling:", err);
     }
-  }, [showCancelled]); // Dependency on showCancelled ensures the poll uses the latest filter
+  }, [statusFilter]);
 
   const fetchShopAndAppointmentsInitial = useCallback(async (shopId: string) => {
     setLoading(true);
@@ -166,7 +187,7 @@ export default function ManageShopPage({
       // Fetch shop data and initial appointments in parallel for speed
       const [shopResponse, apptResponse] = await Promise.all([
         fetch(`/api/shops/${shopId}`),
-        fetch(`/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`)
+        fetch(getAppointmentsUrl(shopId, statusFilter))
       ]);
   
       if (!shopResponse.ok) throw new Error("Barbershop not found or permission denied.");
@@ -201,67 +222,7 @@ export default function ManageShopPage({
     } finally {
       setLoading(false);
     }
-  }, [showCancelled]); 
-
-  // const fetchShopAndAppointments = async () => {
-  //   const resolvedParams = await params;
-  //   const shopId = resolvedParams.shopId;
-    
-  //   if (!shopId) return; // Só executa se shopId estiver disponível
-    
-  //   setLoading(true);
-  //   setError(null);
-  //   try {
-  //     // 1. Buscar dados da barbearia por slug
-  //     const shopResponse = await fetch(`/api/shops/${shopId}`);
-  //     if (!shopResponse.ok) {
-  //       throw new Error("Barbearia não encontrada ou sem permissão.");
-  //     }
-  //     const shopData = await shopResponse.json();
-  //     setShop(shopData);
-  
-  //     // 2. Popular profileData
-  //     setProfileData({
-  //       name: shopData.name || "",
-  //       address: shopData.address || "",
-  //       description: shopData.description || "",
-  //       instagramUrl: shopData.instagramUrl || "",
-  //       whatsappNumber: shopData.whatsappUrl
-  //         ? shopData.whatsappUrl.replace(/\D/g, "")
-  //         : "",
-  //       mapUrl: shopData.mapUrl || "",
-  //       rating: shopData.rating || 0,
-  //     });
-  
-  //     // 3. Popular galeria
-  //     const galleryFiles = (shopData.galleryImages || []).map((url: string) => ({
-  //       url,
-  //       key: url.substring(url.lastIndexOf("/") + 1),
-  //     }));
-  //     setGallery(galleryFiles);
-  //     setInitialGallery(galleryFiles);
-  
-  //     // 4. Buscar agendamentos
-  //     const apptRes = await fetch(
-  //       `/api/shops/${shopId}/appointments?showCancelled=${showCancelled}`
-  //     );
-  //     if (!apptRes.ok) {
-  //       throw new Error("Falha ao buscar agendamentos.");
-  //     }
-  //     const apptData = await apptRes.json();
-  //     setAppointments(apptData);
-  //   } catch (err: any) {
-  //     console.error("Erro ao carregar dados:", err);
-  //     setError(err.message || "Erro inesperado.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // // Remover BroadcastChannel e garantir polling confiável
-  // useEffect(() => {
-  //   fetchShopAndAppointments();
-  // }, [params, showCancelled]);
+  }, [statusFilter]); 
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -314,24 +275,53 @@ export default function ManageShopPage({
     };
   }, [gallery, initialGallery]);
 
-  const filteredAppointments = appointments.filter((appointment) => {
+  const filteredAppointments = appointments.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
 
-    // Se não estiver mostrando cancelados, filtrar eles
-    if (!showCancelled && appointment.status === "cancelled") {
+    // Filtrar por status
+    let statusMatch = false;
+    switch (statusFilter) {
+      case "active":
+        statusMatch = appointment.status === 'pending' || appointment.status === 'confirmed';
+        break;
+      case "cancelled":
+        statusMatch = appointment.status === 'cancelled';
+        break;
+      case "completed":
+        statusMatch = appointment.status === 'completed';
+        break;
+      case "all":
+      default:
+        statusMatch = true;
+        break;
+    }
+
+    if (!statusMatch) {
       return false;
     }
 
-    switch (filter) {
+    // Filtrar por data
+    let dateMatch = false;
+    switch (dateFilter) {
+      case "yesterday":
+        dateMatch = isYesterday(appointmentDate);
+        break;
       case "today":
-        return isToday(appointmentDate);
+        dateMatch = isToday(appointmentDate);
+        break;
       case "week":
-        return isThisWeek(appointmentDate);
+        dateMatch = isThisWeek(appointmentDate);
+        break;
       case "month":
-        return isThisMonth(appointmentDate);
+        dateMatch = isThisMonth(appointmentDate);
+        break;
+      case "all":
       default:
-        return true;
+        dateMatch = true;
+        break;
     }
+
+    return dateMatch;
   });
 
   const getStatusBadge = (status: string) => {
@@ -482,9 +472,7 @@ Obrigado! ✂️`,
         setShowDeleteDialog(false);
 
         // Recarregar agendamentos
-        const appointmentsResponse = await fetch(
-          `/api/shops/${slug}/appointments?showCancelled=${showCancelled}`
-        );
+        const appointmentsResponse = await fetch(getAppointmentsUrl(slug, statusFilter));
         const appointmentsData = await appointmentsResponse.json();
 
         if (appointmentsResponse.ok) {
@@ -713,54 +701,87 @@ Obrigado! ✂️`,
         {activeTab === "appointments" && (
           <div>
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <span className="text-sm font-medium">Filtrar:</span>
+            <div className="flex flex-col gap-4 mb-6">
+              {/* Status Filters */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  <span className="text-sm font-medium">Status:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={statusFilter === "active" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("active")}
+                  >
+                    Ativos
+                  </Button>
+                  <Button
+                    variant={statusFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("all")}
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    variant={statusFilter === "completed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("completed")}
+                  >
+                    Realizados
+                  </Button>
+                  <Button
+                    variant={statusFilter === "cancelled" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("cancelled")}
+                  >
+                    Cancelados
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={filter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("all")}
-                  className="cursor-pointer"
-                >
-                  Todos
-                </Button>
-                <Button
-                  variant={filter === "today" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("today")}
-                  className="cursor-pointer"
-                >
-                  Hoje
-                </Button>
-                <Button
-                  variant={filter === "week" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("week")}
-                  className="cursor-pointer"
-                >
-                  Esta Semana
-                </Button>
-                <Button
-                  variant={filter === "month" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("month")}
-                  className="cursor-pointer"
-                >
-                  Este Mês
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={showCancelled ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowCancelled(!showCancelled)}
-                  className="cursor-pointer"
-                >
-                  {showCancelled ? "Ocultar Cancelados" : "Mostrar Cancelados"}
-                </Button>
+              {/* Date Filters */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span className="text-sm font-medium">Período:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={dateFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("all")}
+                  >
+                    Todos os Dias
+                  </Button>
+                  <Button
+                    variant={dateFilter === "yesterday" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("yesterday")}
+                  >
+                    Ontem
+                  </Button>
+                  <Button
+                    variant={dateFilter === "today" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("today")}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    variant={dateFilter === "week" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("week")}
+                  >
+                    Esta Semana
+                  </Button>
+                  <Button
+                    variant={dateFilter === "month" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("month")}
+                  >
+                    Este Mês
+                  </Button>
+                </div>
               </div>
             </div>
 
