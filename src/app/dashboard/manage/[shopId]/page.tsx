@@ -194,11 +194,46 @@ export default function ManageShopPage({
       setLoading(false);
     }
   };
-  
-  // 4. useEffect corrigido para chamar a função
-  useEffect(() => {
-    fetchShopAndAppointments();
-  }, [shop?.slug, showCancelled]); 
+
+    // 4. useEffect corrigido para chamar a função
+    useEffect(() => {
+      fetchShopAndAppointments();
+    }, [shop?.slug, showCancelled]); 
+
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        console.log("⏱️ Polling automático: buscando agendamentos...")
+        fetchShopAndAppointments()
+      }, 15000) // 15 segundos
+    
+      return () => clearInterval(interval)
+    }, [shop?.id, showCancelled])
+    
+    useEffect(() => {
+      const bc = new BroadcastChannel("appointments-sync")
+    
+      bc.onmessage = (event) => {
+        const { type, shopSlug } = event.data
+        if (type === "new_appointment" && shopSlug === shop?.slug) {
+          console.log("Novo agendamento detectado, atualizando lista...")
+          fetchShopAndAppointments()
+        }
+      }
+    
+      return () => {
+        bc.close()
+      }
+    }, [shop?.slug])
+    
+//   useEffect(() => {
+//   const interval = setInterval(() => {
+//     console.log("⏱️ Polling automático: buscando agendamentos...")
+//     fetchShopAndAppointments()
+//   }, 15000) // 15 segundos
+
+//   return () => clearInterval(interval)
+// }, [shop?.id, showCancelled])
 
   useEffect(() => {
     return () => {
@@ -1150,7 +1185,7 @@ Obrigado! ✂️`,
             </Card>
 
             {/* Outras Configurações */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Outras Configurações</CardTitle>
               </CardHeader>
@@ -1160,7 +1195,7 @@ Obrigado! ✂️`,
                   breve.
                 </p>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Remoção de Barbearia */}
             <Card>
