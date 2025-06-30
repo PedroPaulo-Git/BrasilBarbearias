@@ -188,6 +188,8 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
 
       if (checkResponse.ok && checkData.hasAppointment) {
         setMessage("Você já possui um agendamento ativo nesta barbearia.");
+        setExistingAppointment(checkData);
+        setShowTracking(false);
         setLoading(false);
         return;
       }
