@@ -17,9 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Calendar,
   Clock,
-  Phone,
   Mail,
   User,
   CheckCircle,
@@ -39,9 +37,19 @@ import {
   TrendingUp,
   TrendingDown,
   Check,
-  Users
+  Users,
+  Calendar as CalendarIcon,
+  Phone,
 } from "lucide-react";
-import { format, parseISO, isToday, isThisWeek, isThisMonth, isYesterday } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  format,
+  parseISO,
+  isToday,
+  isThisWeek,
+  isThisMonth,
+  isYesterday,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ImageUploader } from "@/components/ImageUploader";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +67,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 // import { useToast } from "@/components/ui/use-toast";
-import { toast } from 'sonner'
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +76,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from "@/components/ui/select";
 
 interface Appointment {
   id: string;
@@ -101,7 +117,6 @@ interface Shop {
   mapUrl?: string | null;
   rating?: number | null;
 }
-type FilterType = "default" | "cancelled" | "completed" | "all";
 export default function ManageShopPage({
   params,
 }: {
@@ -115,9 +130,13 @@ export default function ManageShopPage({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [statusFilter, setStatusFilter] = useState<"active" | "all" | "cancelled" | "completed">("active");
-  const [dateFilter, setDateFilter] = useState<"all" | "yesterday" | "today" | "week" | "month">("all");
+
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "all" | "cancelled" | "completed"
+  >("active");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "yesterday" | "today" | "week" | "month"
+  >("all");
   const [showCancelled, setShowCancelled] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "appointments" | "stats" | "settings"
@@ -134,7 +153,7 @@ export default function ManageShopPage({
     mapUrl: "",
     rating: 0,
   });
-  const [gallery, setGallery] = useState<{ key: string, url: string }[]>([]);
+  const [gallery, setGallery] = useState<{ key: string; url: string }[]>([]);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
 
@@ -150,110 +169,125 @@ export default function ManageShopPage({
 
   const [formData, setFormData] = useState<Partial<Shop>>({});
   const [saving, setSaving] = useState(false);
-  const [initialGallery, setInitialGallery] = useState<{ key: string, url: string }[]>([]);
+  const [initialGallery, setInitialGallery] = useState<
+    { key: string; url: string }[]
+  >([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const submitted = useRef(false);
 
-  const getAppointmentsUrl = (shopId: string, filter: string) => {
-    switch (filter) {
-      case "cancelled":
-        return `/api/shops/${shopId}/appointments?status=cancelled`;
-      case "completed":
-        return `/api/shops/${shopId}/appointments?status=completed`;
-      case "all":
-        return `/api/shops/${shopId}/appointments`;
-      case "active":
-      default:
-        return `/api/shops/${shopId}/appointments?status=active`;
+  const [showSimpleModal, setShowSimpleModal] = useState(false);
+  const [simpleDate, setSimpleDate] = useState("");
+  const [simpleTime, setSimpleTime] = useState("");
+  const [isManual, setIsManual] = useState(false);
+  const [simpleReason, setSimpleReason] = useState("");
+
+  const getAppointmentsUrl = (shopId: string, filter: string, data: string) => {
+    let url = `/api/shops/${shopId}/appointments?status=${status}`;
+    if (data && data !== "all") {
+      url += `&date=${data}`;
     }
+    return url;
   };
 
-  const fetchAppointmentsOnly = useCallback(async (shopId: string) => {
-    console.log("⏱️ Polling for new appointments...");
-    try {
-      const apptRes = await fetch(getAppointmentsUrl(shopId, statusFilter));
-      if (!apptRes.ok) {
-        // Silently fail or log to console without disrupting the user
-        console.error("Polling failed: Could not fetch appointments.");
-        return;
+  const fetchAppointmentsOnly = useCallback(
+    async (shopId: string) => {
+      console.log("⏱️ Polling for new appointments...");
+      try {
+        const apptRes = await fetch(
+          getAppointmentsUrl(shopId, statusFilter, dateFilter)
+        );
+        if (!apptRes.ok) {
+          // Silently fail or log to console without disrupting the user
+          console.error("Polling failed: Could not fetch appointments.");
+          return;
+        }
+        const apptData = await apptRes.json();
+        setAppointments(apptData); // Update only the appointments list
+      } catch (err) {
+        console.error("Error during appointment polling:", err);
       }
-      const apptData = await apptRes.json();
-      setAppointments(apptData); // Update only the appointments list
-    } catch (err) {
-      console.error("Error during appointment polling:", err);
-    }
-  }, [statusFilter]);
+    },
+    [statusFilter]
+  );
 
-  const fetchShopAndAppointmentsInitial = useCallback(async (shopId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Fetch shop data and initial appointments in parallel for speed
-      const [shopResponse, apptResponse] = await Promise.all([
-        fetch(`/api/shops/${shopId}`),
-        fetch(getAppointmentsUrl(shopId, statusFilter))
-      ]);
-  
-      if (!shopResponse.ok) throw new Error("Barbershop not found or permission denied.");
-      if (!apptResponse.ok) throw new Error("Failed to fetch initial appointments.");
-      
-      const shopData = await shopResponse.json();
-      const apptData = await apptResponse.json();
-  
-      // Set all state related to the shop
-      setShop(shopData);
-      setProfileData({
-        name: shopData.name || "",
-        address: shopData.address || "",
-        description: shopData.description || "",
-        instagramUrl: shopData.instagramUrl || "",
-        whatsappNumber: shopData.whatsappUrl ? shopData.whatsappUrl.replace(/\D/g, "") : "",
-        mapUrl: shopData.mapUrl || "",
-        rating: shopData.rating || 0,
-      });
-      const galleryFiles = (shopData.galleryImages || []).map((url: string) => ({
-        url,
-        key: url.substring(url.lastIndexOf("/") + 1),
-      }));
-      setGallery(galleryFiles);
-      setInitialGallery(galleryFiles);
-  
-      // Set the initial appointments
-      setAppointments(apptData);
-      
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]); 
+  const fetchShopAndAppointmentsInitial = useCallback(
+    async (shopId: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch shop data and initial appointments in parallel for speed
+        const [shopResponse, apptResponse] = await Promise.all([
+          fetch(`/api/shops/${shopId}`),
+          fetch(getAppointmentsUrl(shopId, statusFilter, dateFilter)),
+        ]);
+
+        if (!shopResponse.ok)
+          throw new Error("Barbershop not found or permission denied.");
+        if (!apptResponse.ok)
+          throw new Error("Failed to fetch initial appointments.");
+
+        const shopData = await shopResponse.json();
+        const apptData = await apptResponse.json();
+
+        // Set all state related to the shop
+        setShop(shopData);
+        setProfileData({
+          name: shopData.name || "",
+          address: shopData.address || "",
+          description: shopData.description || "",
+          instagramUrl: shopData.instagramUrl || "",
+          whatsappNumber: shopData.whatsappUrl
+            ? shopData.whatsappUrl.replace(/\D/g, "")
+            : "",
+          mapUrl: shopData.mapUrl || "",
+          rating: shopData.rating || 0,
+        });
+        const galleryFiles = (shopData.galleryImages || []).map(
+          (url: string) => ({
+            url,
+            key: url.substring(url.lastIndexOf("/") + 1),
+          })
+        );
+        setGallery(galleryFiles);
+        setInitialGallery(galleryFiles);
+
+        // Set the initial appointments
+        setAppointments(apptData);
+      } catch (err: any) {
+        setError(err.message || "An unexpected error occurred.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter]
+  );
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
-  
+
     const initialize = async () => {
       const resolvedParams = await params;
       const shopId = resolvedParams.shopId;
-      
+
       if (!shopId) return;
-  
+
       // 1. Perform the full, initial data load
       await fetchShopAndAppointmentsInitial(shopId);
-  
+
       // 2. Set up the polling interval to only fetch appointments
       intervalId = setInterval(() => {
         fetchAppointmentsOnly(shopId);
       }, 5000); // Poll every 5 seconds
     };
-  
+
     initialize();
-  
+
     // Cleanup function: this runs when the component unmounts or dependencies change
     return () => {
       clearInterval(intervalId);
     };
   }, [params, fetchShopAndAppointmentsInitial, fetchAppointmentsOnly]);
-  
+
   useEffect(() => {
     return () => {
       // This cleanup function runs when the component unmounts
@@ -262,16 +296,18 @@ export default function ManageShopPage({
       }
 
       // Determine which files were newly uploaded but not saved
-      const initialKeys = new Set(initialGallery.map(img => img.key));
-      const currentKeys = new Set(gallery.map(img => img.key));
-      const newKeysNotSaved = [...currentKeys].filter(key => !initialKeys.has(key));
+      const initialKeys = new Set(initialGallery.map((img) => img.key));
+      const currentKeys = new Set(gallery.map((img) => img.key));
+      const newKeysNotSaved = [...currentKeys].filter(
+        (key) => !initialKeys.has(key)
+      );
 
       if (newKeysNotSaved.length > 0) {
         console.log("Cleaning up orphaned files:", newKeysNotSaved);
         // Fire-and-forget request to delete orphaned files
-        fetch('/api/uploadthing/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        fetch("/api/uploadthing/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ keys: newKeysNotSaved }),
           keepalive: true, // Ensures the request is sent even if the page is closing
         });
@@ -279,20 +315,22 @@ export default function ManageShopPage({
     };
   }, [gallery, initialGallery]);
 
-  const filteredAppointments = appointments.filter(appointment => {
+  const filteredAppointments = appointments.filter((appointment) => {
     const appointmentDate = parseISO(appointment.date);
 
     // Filtrar por status
     let statusMatch = false;
     switch (statusFilter) {
       case "active":
-        statusMatch = appointment.status === 'pending' || appointment.status === 'confirmed';
+        statusMatch =
+          appointment.status === "pending" ||
+          appointment.status === "confirmed";
         break;
       case "cancelled":
-        statusMatch = appointment.status === 'cancelled';
+        statusMatch = appointment.status === "cancelled";
         break;
       case "completed":
-        statusMatch = appointment.status === 'completed';
+        statusMatch = appointment.status === "completed";
         break;
       case "all":
       default:
@@ -329,7 +367,7 @@ export default function ManageShopPage({
   });
 
   // Filtro de data para as estatísticas
-  const statsAppointments = appointments.filter(appointment => {
+  const statsAppointments = appointments.filter((appointment) => {
     const appointmentDate = parseISO(appointment.date);
     switch (dateFilter) {
       case "yesterday":
@@ -350,16 +388,28 @@ export default function ManageShopPage({
     switch (status) {
       case "confirmed":
         return (
-          <Badge className="bg-green-100 text-green-800">Confirmado</Badge>
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+            Confirmado
+          </Badge>
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+            Pendente
+          </Badge>
         );
       case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">Cancelado</Badge>;
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+            Cancelado
+          </Badge>
+        );
       case "completed":
-        return <Badge className="bg-blue-100 text-blue-800">Realizado</Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+            Realizado
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -494,7 +544,9 @@ Obrigado! ✂️`,
         setShowDeleteDialog(false);
 
         // Recarregar agendamentos
-        const appointmentsResponse = await fetch(getAppointmentsUrl(slug, statusFilter));
+        const appointmentsResponse = await fetch(
+          getAppointmentsUrl(slug, statusFilter, dateFilter)
+        );
         const appointmentsData = await appointmentsResponse.json();
 
         if (appointmentsResponse.ok) {
@@ -515,19 +567,37 @@ Obrigado! ✂️`,
     return appointments.filter((a) => a.status === status).length;
   };
 
-  const stats = {
-    total: statsAppointments.length,
-    confirmed: statsAppointments.filter(a => a.status === 'confirmed').length,
-    pending: statsAppointments.filter(a => a.status === 'pending').length,
-    cancelled: statsAppointments.filter(a => a.status === 'cancelled').length,
-    completed: statsAppointments.filter(a => a.status === 'completed').length,
-  };
+// Primeiro, filtra só os agendamentos reais (excluindo bloqueios)
+const realAppointments = statsAppointments.filter(
+  (a) =>
+    a.customer.name !== "Horário reservado" &&
+    a.customer.name !== "Horário bloqueado"
+);
 
-  const performanceMetrics = {
-    completionRate: (stats.total > 0 ? (stats.completed / (stats.total - stats.cancelled - stats.pending)) * 100 : 0).toFixed(1),
-    confirmationRate: (stats.pending + stats.confirmed > 0 ? (stats.confirmed / (stats.pending + stats.confirmed)) * 100 : 0).toFixed(1),
-    cancellationRate: (stats.total > 0 ? (stats.cancelled / stats.total) * 100 : 0).toFixed(1)
-  };
+// Agora calcula os stats só com base nesses agendamentos reais
+const stats = {
+  total: realAppointments.length,
+  confirmed: realAppointments.filter((a) => a.status === "confirmed").length,
+  pending: realAppointments.filter((a) => a.status === "pending").length,
+  cancelled: realAppointments.filter((a) => a.status === "cancelled").length,
+  completed: realAppointments.filter((a) => a.status === "completed").length,
+};
+
+// Calcula as métricas com base nos agendamentos reais
+const performanceMetrics = {
+  completionRate: (stats.total > 0
+    ? (stats.completed / (stats.total - stats.cancelled - stats.pending)) * 100
+    : 0
+  ).toFixed(1),
+  confirmationRate: (stats.pending + stats.confirmed > 0
+    ? (stats.confirmed / (stats.pending + stats.confirmed)) * 100
+    : 0
+  ).toFixed(1),
+  cancellationRate: (stats.total > 0
+    ? (stats.cancelled / stats.total) * 100
+    : 0
+  ).toFixed(1),
+};
 
   const handleRemoveShop = async () => {
     setRemovingShop(true);
@@ -549,70 +619,43 @@ Obrigado! ✂️`,
     }
   };
 
-  const handleProfileUpdate = async () => {
-    setUpdatingProfile(true);
-    setProfileMessage("");
-    try {
-      const { shopId: slug } = await params;
-      const { whatsappNumber, ...rest } = profileData;
-      const fullData = {
-        ...rest,
-        galleryImages: gallery.map(img => img.url),
-        whatsappUrl: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}` : undefined,
-      };
-      const res = await fetch(`/api/shops/${slug}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(fullData),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setProfileMessage("Perfil atualizado com sucesso!");
-        setShop(data); // Update shop data locally
-        setTimeout(() => setProfileMessage(""), 2000);
-      } else {
-        setProfileMessage(data.error || "Erro ao atualizar perfil");
-      }
-    } catch {
-      setProfileMessage("Erro ao atualizar perfil");
-    } finally {
-      setUpdatingProfile(false);
-    }
-  };
-
   const handleUpdate = async () => {
     setSaving(true);
     submitted.current = true; // Mark as submitted to prevent cleanup
 
     const { whatsappNumber, ...restOfData } = profileData;
 
-    const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}` : undefined;
+    const whatsappUrl = whatsappNumber
+      ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}`
+      : undefined;
 
     try {
       // Determine which files to delete from Uploadthing
-      const initialKeys = new Set(initialGallery.map(img => img.key));
-      const currentKeys = new Set(gallery.map(img => img.key));
-      const keysToDelete = [...initialKeys].filter(key => !currentKeys.has(key));
+      const initialKeys = new Set(initialGallery.map((img) => img.key));
+      const currentKeys = new Set(gallery.map((img) => img.key));
+      const keysToDelete = [...initialKeys].filter(
+        (key) => !currentKeys.has(key)
+      );
 
       const response = await fetch(`/api/shops/${(await params).shopId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ...restOfData, 
+        body: JSON.stringify({
+          ...restOfData,
           whatsappUrl,
-          galleryImages: gallery.map(img => img.url) // Send only URLs to backend
+          galleryImages: gallery.map((img) => img.url), // Send only URLs to backend
         }),
       });
 
       if (!response.ok) {
         throw new Error("Falha ao atualizar a barbearia.");
       }
-      
+
       // If shop update is successful, delete the removed files from Uploadthing
       if (keysToDelete.length > 0) {
-        await fetch('/api/uploadthing/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch("/api/uploadthing/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ keys: keysToDelete }),
         });
       }
@@ -620,17 +663,60 @@ Obrigado! ✂️`,
       toast.success("Perfil atualizado com sucesso!", {
         description: "As alterações foram salvas com sucesso.",
       });
-      
+
       // Update the initial state to match the saved state
       setInitialGallery(gallery);
-
     } catch (error: any) {
       toast.error("Erro ao atualizar perfil", {
         description: error.message,
-      })
+      });
     } finally {
       setSaving(false);
-      setTimeout(() => submitted.current = false, 100); // Reset submitted status
+      setTimeout(() => (submitted.current = false), 100); // Reset submitted status
+    }
+  };
+
+  const generateImpossiblePhone = () => {
+    // Sempre começa com 99999 e termina com 6 dígitos aleatórios
+    const random = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
+    return `99999${random}`; // Exemplo: 99999123456
+  };
+  const handleSimpleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!shop) return;
+
+    const name = isManual ? "Presencial" : "Horário reservado";
+    const dummyPhone = generateImpossiblePhone();
+    try {
+      await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({
+          shopId: shop.id,
+          clientName: name,
+          clientContact: dummyPhone,
+          date: simpleDate,
+          time: simpleTime,
+        }),
+      });
+    } catch (error) {
+      console.error("Erro ao bloquear horário:", error);
+    }
+    setShowSimpleModal(false);
+    fetchAppointmentsOnly(shop.id); // Atualiza lista
+  };
+
+  const deleteSimpleAppointment = async (appointmentId: string) => {
+    try {
+      await fetch(`/api/appointments/${appointmentId}`, {
+        method: "DELETE",
+      });
+       // Remova do estado local imediatamente:
+    setAppointments((prev) => prev.filter(a => a.id !== appointmentId));
+    if (shop) fetchAppointmentsOnly(shop.id); // Atualiza do backend depois
+    } catch (error) {
+      toast.error("Erro ao remover agendamento");
     }
   };
 
@@ -704,7 +790,7 @@ Obrigado! ✂️`,
             onClick={() => setActiveTab("appointments")}
             className="justify-start sm:justify-center cursor-pointer"
           >
-            <Calendar className="h-4 w-4 mr-2" />
+            <CalendarIcon className="h-4 w-4 mr-2" />
             Agendamentos
           </Button>
           <Button
@@ -752,14 +838,18 @@ Obrigado! ✂️`,
                     Todos
                   </Button>
                   <Button
-                    variant={statusFilter === "completed" ? "default" : "outline"}
+                    variant={
+                      statusFilter === "completed" ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setStatusFilter("completed")}
                   >
                     Realizados
                   </Button>
                   <Button
-                    variant={statusFilter === "cancelled" ? "default" : "outline"}
+                    variant={
+                      statusFilter === "cancelled" ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setStatusFilter("cancelled")}
                   >
@@ -770,7 +860,7 @@ Obrigado! ✂️`,
               {/* Date Filters */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                  <CalendarIcon className="h-4 w-4" />
                   <span className="text-sm font-medium">Período:</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -824,113 +914,181 @@ Obrigado! ✂️`,
                   </CardContent>
                 </Card>
               ) : (
-                filteredAppointments.map((appointment) => (
-                  <Card
-                    key={appointment.id}
-                    className="hover:shadow-md transition-shadow cursor-pointer"
-                  >
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">
-                                {appointment.customer.name}
-                              </span>
-                            </div>
-                            {getStatusBadge(appointment.status)}
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="truncate">
-                                {format(
-                                  parseISO(appointment.date),
-                                  "dd/MM/yyyy",
-                                  { locale: ptBR }
+                filteredAppointments.map((appointment) => {
+                  const phone = appointment.customer.phone;
+                  const isManual = appointment.customer.name === "Presencial";
+                  const isBlocked = appointment.customer.name === "Horário reservado";                  
+                
+                  const dateFormatted = format(parseISO(appointment.date), "dd/MM/yyyy", {
+                    locale: ptBR,
+                  });
+                
+                  const baseCardClasses = isManual
+                    ? "bg-yellow-50 border-yellow-500 border-2 shadow-none"
+                    : isBlocked
+                    ? "bg-red-50 border-red-300 border text-red-800 shadow-sm"
+                    : "hover:shadow-md transition-shadow cursor-pointer";
+                
+                  return (
+                    <Card key={appointment.id} className={baseCardClasses}>
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                          {/* Conteúdo principal */}
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {appointment.customer.name}
+                                </span>
+                                {isManual && (
+                                  <Badge className="bg-yellow-300 text-yellow-900 ml-2">
+                                    Cliente manual
+                                  </Badge>
                                 )}
-                              </span>
+                                {isManual && appointment.status === "completed" && (
+                                  <Badge className="bg-green-300 text-green-900 ml-2">
+                                    Realizado
+                                  </Badge>
+                                )}
+                                {isBlocked && (
+                                  <Badge className="bg-gray-200 text-red-700 ml-2">
+                                    Horário bloqueado
+                                  </Badge>
+                                )}
+                              </div>
+                
+                              {!isManual && !isBlocked && getStatusBadge(appointment.status)}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span>{appointment.time}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="truncate">
-                                {appointment.customer.phone}
-                              </span>
+                
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                <CalendarIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="truncate">{dateFormatted}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span>{appointment.time}</span>
+                              </div>
+                              {!isManual && !isBlocked && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="truncate">{appointment.customer.phone}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
+                
+                          {/* Ações */}
+                          <div className="flex flex-col sm:flex-row gap-2 lg:ml-4">
+                            {/* Normal */}
+                            {!isManual && !isBlocked && (
+                              <>
+                                {(appointment.status === "pending" ||
+                                  appointment.status === "confirmed" ||
+                                  appointment.status === "cancelled") && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => openWhatsApp(appointment)}
+                                    variant="outline"
+                                    className="border-green-600 text-green-600 hover:bg-green-50 cursor-pointer"
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-1" />
+                                    WhatsApp
+                                  </Button>
+                                )}
+                
+                                {appointment.status === "pending" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleStatusChange(appointment.id, "confirmed")
+                                      }
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Confirmar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleStatusChange(appointment.id, "cancelled")
+                                      }
+                                    >
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Cancelar
+                                    </Button>
+                                  </>
+                                )}
+                
+                                {appointment.status === "confirmed" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleStatusChange(appointment.id, "completed")
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Marcar Realizado
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                
+                            {/* Cliente Manual */}
+                            {isManual && appointment.status !== "completed" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  onClick={() =>
+                                    handleStatusChange(appointment.id, "completed")
+                                  }
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Marcar como Realizado
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteSimpleAppointment(appointment.id)}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Remover
+                                </Button>
+                              </>
+                            )}
+                
+                            {/* Bloqueio */}
+                            {isBlocked && (
+                              <>
+                                {/* <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => openEditSimpleModal(appointment)}
+                                >
+                                  <Calendar className="h-4 w-4 mr-1" />
+                                  Alterar Horário
+                                </Button> */}
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteSimpleAppointment(appointment.id)}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Remover Bloqueio
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-
-                        <div className="flex flex-col sm:flex-row gap-2 lg:ml-4">
-                          {/* Botão WhatsApp para status específicos */}
-                          {(appointment.status === "pending" ||
-                            appointment.status === "confirmed" ||
-                            appointment.status === "cancelled") && (
-                            <Button
-                              size="sm"
-                              onClick={() => openWhatsApp(appointment)}
-                              variant="outline"
-                              className="border-green-600 text-green-600 hover:bg-green-50 cursor-pointer"
-                              title={`Enviar mensagem no WhatsApp para ${appointment.customer.name}`}
-                            >
-                              <MessageCircle className="h-4 w-4 mr-1" />
-                              WhatsApp
-                            </Button>
-                          )}
-
-                          {appointment.status === "pending" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleStatusChange(
-                                    appointment.id,
-                                    "confirmed"
-                                  )
-                                }
-                                className="bg-green-600 hover:bg-green-700 cursor-pointer"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirmar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() =>
-                                  handleStatusChange(
-                                    appointment.id,
-                                    "cancelled"
-                                  )
-                                }
-                                className="cursor-pointer"
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
-                          {appointment.status === "confirmed" && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleStatusChange(appointment.id, "completed")
-                              }
-                              className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Marcar Realizado
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  );
+                })                
               )}
             </div>
           </div>
@@ -940,7 +1098,7 @@ Obrigado! ✂️`,
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
                 <span className="text-sm font-medium">Filtrar Período:</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1011,7 +1169,9 @@ Obrigado! ✂️`,
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Pendentes
+                  </CardTitle>
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                 </CardHeader>
                 <CardContent>
@@ -1034,6 +1194,20 @@ Obrigado! ✂️`,
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Cancelados
+                  </CardTitle>
+                  <XCircle className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    {stats.cancelled}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
@@ -1046,24 +1220,36 @@ Obrigado! ✂️`,
                     <TrendingUp className="h-4 w-4" />
                     <span>Taxa de Conclusão</span>
                   </div>
-                  <div className="text-2xl font-bold mt-1">{performanceMetrics.completionRate}%</div>
-                  <p className="text-xs text-slate-500 text-center mt-1">Dos agendamentos ativos, quantos foram concluídos.</p>
+                  <div className="text-2xl font-bold mt-1">
+                    {performanceMetrics.completionRate}%
+                  </div>
+                  <p className="text-xs text-slate-500 text-center mt-1">
+                    Dos agendamentos ativos, quantos foram concluídos.
+                  </p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
                     <Check className="h-4 w-4" />
                     <span>Taxa de Confirmação</span>
                   </div>
-                  <div className="text-2xl font-bold mt-1">{performanceMetrics.confirmationRate}%</div>
-                  <p className="text-xs text-slate-500 text-center mt-1">Dos agendamentos pendentes, quantos foram confirmados.</p>
+                  <div className="text-2xl font-bold mt-1">
+                    {performanceMetrics.confirmationRate}%
+                  </div>
+                  <p className="text-xs text-slate-500 text-center mt-1">
+                    Dos agendamentos pendentes, quantos foram confirmados.
+                  </p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
                     <TrendingDown className="h-4 w-4 text-red-500" />
                     <span>Taxa de Cancelamento</span>
                   </div>
-                  <div className="text-2xl font-bold mt-1 text-red-500">{performanceMetrics.cancellationRate}%</div>
-                  <p className="text-xs text-slate-500 text-center mt-1">Do total de agendamentos, quantos foram cancelados.</p>
+                  <div className="text-2xl font-bold mt-1 text-red-500">
+                    {performanceMetrics.cancellationRate}%
+                  </div>
+                  <p className="text-xs text-slate-500 text-center mt-1">
+                    Do total de agendamentos, quantos foram cancelados.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -1078,54 +1264,85 @@ Obrigado! ✂️`,
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="mb-2" htmlFor="description">Sobre Nós</Label>
+                  <Label className="mb-2" htmlFor="description">
+                    Sobre Nós
+                  </Label>
                   <Textarea
                     id="description"
                     placeholder="Conte a história da sua barbearia..."
                     value={profileData.description}
-                    onChange={(e) => setProfileData({ ...profileData, description: e.target.value })}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        description: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <Label className="mb-2" htmlFor="instagramUrl">Instagram URL</Label>
+                  <Label className="mb-2" htmlFor="instagramUrl">
+                    Instagram URL
+                  </Label>
                   <Input
                     id="instagramUrl"
                     placeholder="https://instagram.com/suabarbearia"
                     value={profileData.instagramUrl}
-                    onChange={(e) => setProfileData({ ...profileData, instagramUrl: e.target.value })}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        instagramUrl: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <Label className="mb-2" htmlFor="whatsappNumber">WhatsApp (Apenas Números)</Label>
+                  <Label className="mb-2" htmlFor="whatsappNumber">
+                    WhatsApp (Apenas Números)
+                  </Label>
                   <Input
                     id="whatsappNumber"
                     placeholder="5511999998888"
                     value={profileData.whatsappNumber}
-                    onChange={(e) => setProfileData({ ...profileData, whatsappNumber: e.target.value })}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        whatsappNumber: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <Label className="mb-2" htmlFor="mapUrl">Google Maps URL</Label>
+                  <Label className="mb-2" htmlFor="mapUrl">
+                    Google Maps URL
+                  </Label>
                   <Input
                     id="mapUrl"
                     placeholder="https://maps.app.goo.gl/..."
                     value={profileData.mapUrl}
-                    onChange={(e) => setProfileData({ ...profileData, mapUrl: e.target.value })}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, mapUrl: e.target.value })
+                    }
                   />
                 </div>
                 <div>
-                  <Label className="mb-2">Galeria de Fotos (Opcional, até 5)</Label>
+                  <Label className="mb-2">
+                    Galeria de Fotos (Opcional, até 5)
+                  </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-2">
                     {gallery.map((image) => (
                       <div key={image.key} className="relative group">
-                        <img 
-                          src={image.url} 
-                          alt="Foto da galeria" 
+                        <img
+                          src={image.url}
+                          alt="Foto da galeria"
                           className="w-full h-24 object-cover rounded-md"
                         />
-                        <button 
+                        <button
                           type="button"
-                          onClick={() => setGallery(gallery.filter(g => g.key !== image.key))} 
+                          onClick={() =>
+                            setGallery(
+                              gallery.filter((g) => g.key !== image.key)
+                            )
+                          }
                           className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-3 w-3" />
@@ -1136,19 +1353,21 @@ Obrigado! ✂️`,
                   {gallery.length < 5 && (
                     <ImageUploader
                       onUploadComplete={(res) => {
-                        setGallery(prev => [...prev, ...res]);
+                        setGallery((prev) => [...prev, ...res]);
                       }}
                       onUploadError={(err) => {
                         toast.error("Erro no Upload", {
                           description: `Ocorreu um erro ao enviar a imagem: ${err.message}`,
-                        })
+                        });
                       }}
                     />
                   )}
                 </div>
                 {session?.user.isAdmin && (
                   <div>
-                    <Label className="mb-2" htmlFor="rating">Avaliação (Admin)</Label>
+                    <Label className="mb-2" htmlFor="rating">
+                      Avaliação (Admin)
+                    </Label>
                     <Input
                       id="rating"
                       type="number"
@@ -1156,14 +1375,23 @@ Obrigado! ✂️`,
                       min="0"
                       max="5"
                       value={profileData.rating}
-                      onChange={(e) => setProfileData({ ...profileData, rating: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          rating: parseFloat(e.target.value) || 0,
+                        })
+                      }
                     />
                   </div>
                 )}
                 <Button onClick={handleUpdate} disabled={saving}>
                   {saving ? "Salvando..." : "Salvar Alterações"}
                 </Button>
-                {profileMessage && <p className="text-sm text-muted-foreground">{profileMessage}</p>}
+                {profileMessage && (
+                  <p className="text-sm text-muted-foreground">
+                    {profileMessage}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -1388,14 +1616,12 @@ Obrigado! ✂️`,
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Esta ação é irreversível. Todos os dados da barbearia e seus agendamentos serão permanentemente excluídos.
+                  Esta ação é irreversível. Todos os dados da barbearia e seus
+                  agendamentos serão permanentemente excluídos.
                 </p>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={removingShop}
-                    >
+                    <Button variant="destructive" disabled={removingShop}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remover Barbearia
                     </Button>
@@ -1404,11 +1630,18 @@ Obrigado! ✂️`,
                     <DialogHeader>
                       <DialogTitle>Confirmar Remoção</DialogTitle>
                       <DialogDescription>
-                        Tem certeza que deseja remover esta barbearia? Esta ação é final e não pode ser desfeita.
+                        Tem certeza que deseja remover esta barbearia? Esta ação
+                        é final e não pode ser desfeita.
                       </DialogDescription>
                     </DialogHeader>
                     {removeShopMsg && (
-                      <div className={`mt-2 text-sm ${removeShopMsg.includes('sucesso') ? 'text-green-600' : 'text-red-600'}`}>
+                      <div
+                        className={`mt-2 text-sm ${
+                          removeShopMsg.includes("sucesso")
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
                         {removeShopMsg}
                       </div>
                     )}
@@ -1428,6 +1661,107 @@ Obrigado! ✂️`,
                 </Dialog>
               </CardContent>
             </Card>
+            <Card>
+  <CardHeader>
+    <CardTitle className="text-lg font-semibold">
+      Criar Cliente Manual ou Bloqueio
+    </CardTitle>
+    <p className="text-sm text-muted-foreground">
+      Selecione a data, horário e o tipo de reserva.
+    </p>
+  </CardHeader>
+  <CardContent>
+    <Button
+      onClick={() => setShowSimpleModal(true)}
+      className="w-full bg-primary text-white hover:bg-primary/90"
+    >
+      + Novo Bloqueio ou Cliente Manual
+    </Button>
+  </CardContent>
+</Card>
+
+<Dialog open={showSimpleModal} onOpenChange={setShowSimpleModal}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle className="text-lg">
+        Novo Agendamento Rápido
+      </DialogTitle>
+      <p className="text-sm text-muted-foreground">
+        Selecione a data, horário e tipo de entrada.
+      </p>
+    </DialogHeader>
+
+    <form onSubmit={handleSimpleSubmit} className="space-y-4">
+      {/* Seletor de Data */}
+      <div className="space-y-2">
+        <Label>Data</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {simpleDate
+                ? format(new Date(simpleDate), "PPP", { locale: ptBR })
+                : "Selecione uma data"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={simpleDate ? new Date(simpleDate) : undefined}
+              onSelect={(date: Date | undefined) => {
+                if (date instanceof Date && !isNaN(date.getTime())) {
+                  setSimpleDate(date.toISOString().split("T")[0]);
+                } else {
+                  setSimpleDate("");
+                }
+              }}
+              initialFocus
+              disabled={(date: Date) => date < new Date()}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Seletor de Hora */}
+      <div className="space-y-2">
+        <Label>Horário</Label>
+        <Input
+          type="time"
+          value={simpleTime}
+          onChange={(e) => setSimpleTime(e.target.value)}
+          required
+        />
+      </div>
+
+      {/* Toggle entre Cliente Manual e Bloqueio */}
+      <div className="space-y-2">
+        <Label>Tipo de Agendamento</Label>
+        <Select
+          value={isManual ? "manual" : "bloqueio"}
+          onValueChange={(value) => setIsManual(value === "manual")}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="manual">Cliente Presencial</SelectItem>
+            <SelectItem value="bloqueio">Bloqueio de Agenda</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" className="w-full">
+          Confirmar Agendamento
+        </Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
+
           </div>
         )}
       </div>

@@ -70,6 +70,10 @@ class ApiService {
   async createAppointment(appointmentData: AppointmentRequest): Promise<AxiosResponse<ApiResponse>> {
     return this.makeRequest<ApiResponse>('POST', '/appointments', appointmentData);
   }
+
+  async deleteAppointment(appointmentId: string): Promise<AxiosResponse<ApiResponse>> {
+    return this.makeRequest<ApiResponse>('DELETE', `/appointments/${appointmentId}`);
+  }
 }
 
 export const apiService = new ApiService(); 

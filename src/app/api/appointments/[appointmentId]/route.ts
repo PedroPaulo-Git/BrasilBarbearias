@@ -72,4 +72,38 @@ export async function PATCH(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ appointmentId: string }> }
+) {
+  try {
+    const session: any = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+    const { appointmentId } = await params;
+    // Verifica se o agendamento existe e pertence ao usuário
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id: appointmentId,
+        shop: {
+          owner: {
+            email: session.user.email,
+          },
+        },
+      },
+    });
+    if (!appointment) {
+      return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+    }
+    await prisma.appointment.delete({
+      where: { id: appointmentId },
+    });
+    return NextResponse.json({ message: "Agendamento removido com sucesso" }, { status: 200 });
+  } catch (error) {
+    console.error("Erro ao remover agendamento:", error);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
 } 
