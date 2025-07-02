@@ -64,58 +64,9 @@ export const SubscribedHomeView = () => (
 </div>
 
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-            {/* <Card className="hover:shadow-lg hover:border-primary transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <BarChart className="w-8 h-8 text-primary" />
-                  <span className="text-xl">Análises e Relatórios</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Entenda seus horários de pico, serviços mais lucrativos e
-                  clientes mais fiéis. Tome decisões baseadas em dados.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-dashed border-gray-400 hover:border-primary hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <Zap className="w-8 h-8 text-primary" />
-                  <span className="text-xl">Marketing Automatizado</span>
-                </CardTitle>
-                <span className="text-xs font-bold text-primary">
-                  (PLANO AVANÇADO)
-                </span>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Envie promoções automáticas para clientes que não agendam há
-                  30 dias. Recupere clientes com um clique.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-dashed border-gray-400 hover:border-primary hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-primary" />
-                  <span className="text-xl">Gestão de Filiais</span>
-                </CardTitle>
-                <span className="text-xs font-bold text-primary">
-                  (PLANO AVANÇADO)
-                </span>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Expandiu? Gerencie todas as suas unidades a partir de um único
-                  painel, com relatórios consolidados.
-                </p>
-              </CardContent>
-            </Card> */}
-            <Card className="hover:shadow-lg hover:border-yellow-700 transition-all duration-300 border-2 border-yellow-400">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 xl:max-w-[80%] 2xl:max-w-[70%] m-auto gap-8 mt-12">
+    
+            <Card className="hover:shadow-lg  hover:border-yellow-700 transition-all duration-300 border-2 border-yellow-400">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <Sparkles className="w-8 h-8 text-yellow-500" />
@@ -215,7 +166,7 @@ Futuro com pagamentos direto pelo sistema.
         </div>
       </section>
 
-      <div className="max-w-3xl mx-auto py-12 px-10 md:px-0">
+      <div className="py-12 px-12 lg:px-80 bg-gradient-to-br from-black to-[#1E1B4B]">
         <h1 className="text-2xl font-bold mb-4 text-white">
           <HelpCircle className="w-6 h-6 inline mr-2 text-white" />
           Dúvidas Frequentes (Assinantes)

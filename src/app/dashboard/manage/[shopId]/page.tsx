@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
   Users,
   Calendar as CalendarIcon,
   Phone,
+  LockKeyhole,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -176,10 +177,33 @@ export default function ManageShopPage({
   const submitted = useRef(false);
 
   const [showSimpleModal, setShowSimpleModal] = useState(false);
-  const [simpleDate, setSimpleDate] = useState("");
+  const [simpleDate, setSimpleDate] = useState<Date | undefined>();
   const [simpleTime, setSimpleTime] = useState("");
   const [isManual, setIsManual] = useState(false);
   const [simpleReason, setSimpleReason] = useState("");
+
+  const timeSlots = useMemo(() => {
+    if (!shop) return [];
+
+    const { openTime, closeTime, serviceDuration } = shop;
+    if (!openTime || !closeTime || !serviceDuration) return [];
+
+    const slots = [];
+
+    let tempDate = new Date();
+    const [openHour, openMinute] = openTime.split(":").map(Number);
+    tempDate.setHours(openHour, openMinute, 0, 0);
+
+    const [closeHour, closeMinute] = closeTime.split(":").map(Number);
+    const closeDate = new Date();
+    closeDate.setHours(closeHour, closeMinute, 0, 0);
+
+    while (tempDate < closeDate) {
+      slots.push(format(tempDate, "HH:mm"));
+      tempDate.setMinutes(tempDate.getMinutes() + serviceDuration);
+    }
+    return slots;
+  }, [shop]);
 
   const getAppointmentsUrl = (shopId: string, filter: string, data: string) => {
     let url = `/api/shops/${shopId}/appointments?status=${status}`;
@@ -683,7 +707,10 @@ const performanceMetrics = {
   };
   const handleSimpleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!shop) return;
+    if (!shop || !simpleDate || !simpleTime) {
+      toast.error("Por favor, selecione uma data e hora.");
+      return;
+    }
 
     const name = isManual ? "Presencial" : "Horário reservado";
     const dummyPhone = generateImpossiblePhone();
@@ -691,20 +718,23 @@ const performanceMetrics = {
       await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-
         body: JSON.stringify({
           shopId: shop.id,
           clientName: name,
           clientContact: dummyPhone,
-          date: simpleDate,
+          date: format(simpleDate, "yyyy-MM-dd"),
           time: simpleTime,
         }),
       });
+      toast.success("Agendamento rápido criado com sucesso!");
+      setShowSimpleModal(false);
+      setSimpleDate(undefined);
+      setSimpleTime("");
+      fetchAppointmentsOnly(shop.id); // Atualiza lista
     } catch (error) {
       console.error("Erro ao bloquear horário:", error);
+      toast.error("Ocorreu um erro ao criar o agendamento.");
     }
-    setShowSimpleModal(false);
-    fetchAppointmentsOnly(shop.id); // Atualiza lista
   };
 
   const deleteSimpleAppointment = async (appointmentId: string) => {
@@ -937,7 +967,7 @@ const performanceMetrics = {
                           <div className="flex-1">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
                               <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
+                                {isBlocked ? (<><LockKeyhole className="h-4 w-4 text-muted-foreground"  /></>):(<><User className="h-4 w-4 text-muted-foreground" /></>) }        
                                 <span className="font-medium">
                                   {appointment.customer.name}
                                 </span>
@@ -946,18 +976,18 @@ const performanceMetrics = {
                                     Cliente manual
                                   </Badge>
                                 )}
+                              </div>
+                             
                                 {isManual && appointment.status === "completed" && (
                                   <Badge className="bg-green-300 text-green-900 ml-2">
                                     Realizado
                                   </Badge>
                                 )}
                                 {isBlocked && (
-                                  <Badge className="bg-gray-200 text-red-700 ml-2">
+                                  <Badge className="bg-gray-200 text-red-500 ml-2">
                                     Horário bloqueado
                                   </Badge>
                                 )}
-                              </div>
-                
                               {!isManual && !isBlocked && getStatusBadge(appointment.status)}
                             </div>
                 
@@ -1703,23 +1733,22 @@ const performanceMetrics = {
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {simpleDate
-                ? format(new Date(simpleDate), "PPP", { locale: ptBR })
+                ? format(simpleDate, "PPP", { locale: ptBR })
                 : "Selecione uma data"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
-            <Calendar
+          <Calendar
               mode="single"
-              selected={simpleDate ? new Date(simpleDate) : undefined}
-              onSelect={(date: Date | undefined) => {
-                if (date instanceof Date && !isNaN(date.getTime())) {
-                  setSimpleDate(date.toISOString().split("T")[0]);
-                } else {
-                  setSimpleDate("");
-                }
-              }}
+              selected={simpleDate}
+              onSelect={setSimpleDate}
               initialFocus
-              disabled={(date: Date) => date < new Date()}
+              disabled={(date: Date) => {
+                // Bloqueia datas antes de hoje (considerando só a data, sem hora)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date < today;
+              }}
             />
           </PopoverContent>
         </Popover>
@@ -1728,12 +1757,26 @@ const performanceMetrics = {
       {/* Seletor de Hora */}
       <div className="space-y-2">
         <Label>Horário</Label>
-        <Input
-          type="time"
-          value={simpleTime}
-          onChange={(e) => setSimpleTime(e.target.value)}
-          required
-        />
+        {timeSlots.length > 0 ? (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 rounded-md border">
+            {timeSlots.map((time) => (
+              <Button
+                key={time}
+                type="button"
+                variant={simpleTime === time ? "default" : "outline"}
+                onClick={() => setSimpleTime(time)}
+                className="w-full"
+              >
+                {time}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground text-center p-4 bg-secondary rounded-md">
+            Configure os horários e duração do atendimento nas configurações
+            para ver os horários.
+          </div>
+        )}
       </div>
 
       {/* Toggle entre Cliente Manual e Bloqueio */}
