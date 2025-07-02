@@ -134,7 +134,7 @@ export default function ManageShopPage({
   >("active");
   const [dateFilter, setDateFilter] = useState<
     "all" | "yesterday" | "today" | "week" | "month"
-  >("all");
+  >("today");
   const [showCancelled, setShowCancelled] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "appointments" | "stats" | "settings" | "services"
@@ -180,6 +180,14 @@ export default function ManageShopPage({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState("daily");
   const [daysOfWeek, setDaysOfWeek] = useState<string[]>([]);
+
+  const [showManualClientModal, setShowManualClientModal] = useState(false);
+  const [manualDate, setManualDate] = useState<Date | undefined>(undefined);
+  const [manualTime, setManualTime] = useState("");
+  const [manualClientName, setManualClientName] = useState("");
+  const [manualClientPhone, setManualClientPhone] = useState("");
+  const [manualClientEmail, setManualClientEmail] = useState("");
+  const [isManualClient, setIsManualClient] = useState(false);
 
   const timeSlots = useMemo(() => {
     if (!shop) return [];
@@ -698,20 +706,20 @@ const performanceMetrics = {
       setTimeout(() => (submitted.current = false), 100); // Reset submitted status
     }
   };
-
   const handleBlockTimeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!shop || !blockingStartTime || !blockingEndTime) {
       toast.error("Por favor, preencha todos os campos de horário.");
       return;
     }
-
+  
     try {
-      await fetch(`/api/shops/${shop.id}/blocking`, {
+      // AJUSTE AQUI: Use shop.slug na URL para corresponder à rota da API
+      await fetch(`/api/shops/${shop.slug}/blocking`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shopId: shop.id,
+          // O shopId não é mais necessário no corpo, pois a API o obtém do slug na URL
           date: blockingDate ? format(blockingDate, "yyyy-MM-dd") : null,
           startTime: blockingStartTime,
           endTime: blockingEndTime,
@@ -720,6 +728,7 @@ const performanceMetrics = {
           daysOfWeek: isRecurring && recurrenceType === 'weekly' ? daysOfWeek : [],
         }),
       });
+      
       toast.success("Horário bloqueado com sucesso!");
       setShowBlockingModal(false);
       setBlockingDate(undefined);
@@ -728,13 +737,16 @@ const performanceMetrics = {
       setIsRecurring(false);
       setRecurrenceType("daily");
       setDaysOfWeek([]);
+      
+      // Atualiza a lista de agendamentos
       fetchAppointmentsOnly(shop.id);
+  
     } catch (error) {
       console.error("Erro ao bloquear horário:", error);
       toast.error("Ocorreu um erro ao bloquear o horário.");
     }
   };
-
+  
   const deleteSimpleAppointment = async (appointmentId: string) => {
     try {
       await fetch(`/api/appointments/${appointmentId}`, {
@@ -747,6 +759,47 @@ const performanceMetrics = {
       toast.error("Erro ao remover agendamento");
     }
   };
+
+  const handleCreateManualClient = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+  
+    if (!shop || !manualDate || !manualTime) {
+      toast.error("Por favor, selecione a data e o horário.");
+      return;
+    }
+  
+    try {
+      // Use shop.slug na URL para corresponder à rota da API
+      const response = await fetch(`/api/shops/${shop.slug}/manual-client`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: format(manualDate, "yyyy-MM-dd"),
+          time: manualTime,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Falha ao criar o agendamento manual.");
+      }
+  
+      toast.success("Cliente manual criado com sucesso!");
+      
+      // Limpa o formulário e fecha o modal
+      setShowManualClientModal(false);
+      setManualDate(undefined);
+      setManualTime("");
+  
+      // Atualiza a lista de agendamentos para mostrar o novo cliente
+      fetchAppointmentsOnly(shop.id);
+  
+    } catch (error: any) {
+      console.error("Erro ao criar cliente manual:", error);
+      toast.error(error.message || "Ocorreu um erro ao criar o cliente manual.");
+    }
+  };
+  
 
   if (status === "loading") {
     return <div>Carregando...</div>;
@@ -901,11 +954,11 @@ const performanceMetrics = {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    variant={dateFilter === "all" ? "default" : "outline"}
+                    variant={dateFilter === "today" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setDateFilter("all")}
+                    onClick={() => setDateFilter("today")}
                   >
-                    Todos os Dias
+                    Hoje
                   </Button>
                   <Button
                     variant={dateFilter === "yesterday" ? "default" : "outline"}
@@ -913,13 +966,6 @@ const performanceMetrics = {
                     onClick={() => setDateFilter("yesterday")}
                   >
                     Ontem
-                  </Button>
-                  <Button
-                    variant={dateFilter === "today" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setDateFilter("today")}
-                  >
-                    Hoje
                   </Button>
                   <Button
                     variant={dateFilter === "week" ? "default" : "outline"}
@@ -934,6 +980,13 @@ const performanceMetrics = {
                     onClick={() => setDateFilter("month")}
                   >
                     Este Mês
+                  </Button>
+                  <Button
+                    variant={dateFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("all")}
+                  >
+                    Todos os Dias
                   </Button>
                 </div>
               </div>
@@ -1704,119 +1757,179 @@ const performanceMetrics = {
               </CardContent>
             </Card>
             <Card>
-  <CardHeader>
-    <CardTitle className="text-lg font-semibold">
-      Criar Bloqueio de Horário
-    </CardTitle>
-    <p className="text-sm text-muted-foreground">
-      Selecione a data, horário e o tipo de bloqueio.
-    </p>
-  </CardHeader>
-  <CardContent>
-    <Button
-      onClick={() => setShowBlockingModal(true)}
-      className="w-full bg-primary text-white hover:bg-primary/90"
-    >
-      + Novo Bloqueio
-    </Button>
-  </CardContent>
-</Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">
+                  Criar Bloqueio de Horário
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Selecione a data, horário e o tipo de bloqueio.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => setShowBlockingModal(true)}
+                  className="w-full bg-primary text-white hover:bg-primary/90"
+                >
+                  + Novo Bloqueio
+                </Button>
+                <Button
+                  onClick={() => setShowManualClientModal(true)}
+                  className="w-full mt-2 bg-secondary text-primary border border-primary hover:bg-primary/10"
+                >
+                  + Novo Cliente Manual
+                </Button>
+              </CardContent>
+            </Card>
 
-<Dialog open={showBlockingModal} onOpenChange={setShowBlockingModal}>
-  <DialogContent className="max-w-md">
-    <DialogHeader>
-      <DialogTitle className="text-lg">
-        Novo Bloqueio de Horário
-      </DialogTitle>
-      <p className="text-sm text-muted-foreground">
-        Selecione a data, horário e tipo de bloqueio.
-      </p>
-    </DialogHeader>
-
-    <form onSubmit={handleBlockTimeSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Data</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full justify-start text-left font-normal"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {blockingDate
-                ? format(blockingDate, "PPP", { locale: ptBR })
-                : "Selecione uma data"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-          <Calendar
-              mode="single"
-              selected={blockingDate}
-              onSelect={setBlockingDate}
-              initialFocus
-              disabled={(date: Date) => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                return date < today;
-              }}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startTime">Início</Label>
-          <Input id="startTime" type="time" value={blockingStartTime} onChange={(e) => setBlockingStartTime(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="endTime">Fim</Label>
-          <Input id="endTime" type="time" value={blockingEndTime} onChange={(e) => setBlockingEndTime(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Checkbox id="recurring" checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
-        <Label htmlFor="recurring">Bloqueio Recorrente</Label>
-      </div>
-
-      {isRecurring && (
-        <div className="space-y-4">
-          <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Tipo de recorrência" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Diariamente</SelectItem>
-              <SelectItem value="weekly">Semanalmente</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {recurrenceType === 'weekly' && (
-            <div className="space-y-2">
-              <Label>Dias da Semana</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {[ { id: 'monday', label: 'Seg' }, { id: 'tuesday', label: 'Ter' }, { id: 'wednesday', label: 'Qua' }, { id: 'thursday', label: 'Qui' }, { id: 'friday', label: 'Sex' }, { id: 'saturday', label: 'Sáb' }, { id: 'sunday', label: 'Dom' }].map(day => (
-                  <div key={day.id} className="flex items-center space-x-2">
-                    <Checkbox id={day.id} checked={daysOfWeek.includes(day.id)} onCheckedChange={() => setDaysOfWeek(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])} />
-                    <Label htmlFor={day.id}>{day.label}</Label>
+            <Dialog open={showBlockingModal} onOpenChange={setShowBlockingModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-lg">
+                    Novo Bloqueio de Horário
+                  </DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione a data, horário e tipo de bloqueio.
+                  </p>
+                </DialogHeader>
+                <form onSubmit={handleBlockTimeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {blockingDate
+                            ? format(blockingDate, "PPP", { locale: ptBR })
+                            : "Selecione uma data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={blockingDate}
+                          onSelect={setBlockingDate}
+                          initialFocus
+                          disabled={(date: Date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startTime">Início</Label>
+                      <Input id="startTime" type="time" value={blockingStartTime} onChange={(e) => setBlockingStartTime(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endTime">Fim</Label>
+                      <Input id="endTime" type="time" value={blockingEndTime} onChange={(e) => setBlockingEndTime(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="recurring" checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
+                    <Label htmlFor="recurring">Bloqueio Recorrente</Label>
+                  </div>
+                  {isRecurring && (
+                    <div className="space-y-4">
+                      <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tipo de recorrência" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Diariamente</SelectItem>
+                          <SelectItem value="weekly">Semanalmente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {recurrenceType === 'weekly' && (
+                        <div className="space-y-2">
+                          <Label>Dias da Semana</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[ { id: 'monday', label: 'Seg' }, { id: 'tuesday', label: 'Ter' }, { id: 'wednesday', label: 'Qua' }, { id: 'thursday', label: 'Qui' }, { id: 'friday', label: 'Sex' }, { id: 'saturday', label: 'Sáb' }, { id: 'sunday', label: 'Dom' }].map(day => (
+                              <div key={day.id} className="flex items-center space-x-2">
+                                <Checkbox id={day.id} checked={daysOfWeek.includes(day.id)} onCheckedChange={() => setDaysOfWeek(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])} />
+                                <Label htmlFor={day.id}>{day.label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <Button type="submit" className="w-full">
+                      Confirmar Bloqueio
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
 
-      <DialogFooter>
-        <Button type="submit" className="w-full">
-          Confirmar Bloqueio
-        </Button>
-      </DialogFooter>
-    </form>
-  </DialogContent>
-</Dialog>
-
+            {/* Modal de criação manual de cliente */}
+            <Dialog open={showManualClientModal} onOpenChange={setShowManualClientModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-lg">Novo Cliente Manual</DialogTitle>
+                  <p className="text-sm text-muted-foreground">Selecione apenas a data e o horário para criar um cliente manual rapidamente.</p>
+                </DialogHeader>
+                <form onSubmit={handleCreateManualClient} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {manualDate
+                            ? format(manualDate, "PPP", { locale: ptBR })
+                            : "Selecione uma data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={manualDate}
+                          onSelect={setManualDate}
+                          initialFocus
+                          disabled={(date: Date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Horário</Label>
+                    <Select value={manualTime} onValueChange={setManualTime} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um horário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map(slot => (
+                          <SelectItem key={slot} value={slot}>
+                            {slot}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" className="w-full">
+                      Criar Cliente Manual
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>

@@ -202,7 +202,7 @@ export function AppointmentForm({ shop, services: initialServices, defaultServic
       return;
     }
 
-    if (selectedServices.length === 0) {
+    if (selectedServices.length === 0 && customServices.length === 0) {
       setMessage("Selecione pelo menos um serviço");
       setLoading(false);
       return;
@@ -261,7 +261,10 @@ export function AppointmentForm({ shop, services: initialServices, defaultServic
           clientContact: getPhoneNumbers(clientPhone),
           date: date.toISOString().split("T")[0],
           time,
-          selectedServices,
+          selectedServices: [
+            ...selectedServices,
+            ...customServices.map((name) => ({ name, price: 0, duration: defaultDuration }))
+          ],
           haircutStyle,
         }),
       });

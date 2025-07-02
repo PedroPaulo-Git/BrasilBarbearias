@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         clientName,
         clientContact: phoneNumbers,
         date: appointmentDate,
-        status: 'confirmed' // Define o status inicial como confirmado
+        status: 'pending' // Define o status inicial como confirmado
       }
     })
 
