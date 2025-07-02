@@ -12,6 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Star, Instagram, MessageCircle } from "lucide-react";
 import { AppointmentForm } from "@/components/AppointmentForm";
 import { GalleryCarousel } from "@/components/CarrosselImages";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface Shop {
   id: string;
@@ -29,15 +37,38 @@ interface Shop {
   rating?: number | null;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+}
+
 interface ShopPageProps {
   params: Promise<{ slug: string }>;
 }
+
+const DEFAULT_SERVICES = [
+  { name: "Corte de Cabelo" },
+  { name: "Barba" },
+  { name: "Corte + Barba" },
+  { name: "Corte Fade" },
+  { name: "Corte Clássico" },
+  { name: "Corte Buzz Cut" },
+  { name: "Hidratação" },
+  { name: "Pigmentação" },
+  { name: "Sobrancelha" },
+  { name: "Pigmentação de Barba" },
+];
 
 export default function ShopPage({ params }: ShopPageProps) {
   const [shop, setShop] = useState<Shop | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [services, setServices] = useState<Service[]>([]);
+  const [customServices, setCustomServices] = useState<string[]>([]);
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 720);
@@ -50,27 +81,34 @@ export default function ShopPage({ params }: ShopPageProps) {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-  const fetchShop = useCallback(async () => {
-    try {
-      const { slug } = await params;
-      const response = await fetch(`/api/shops/${slug}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setShop(data);
-      } else {
-        setErrorMsg(data.error);
-      }
-    } catch {
-      setErrorMsg("Erro ao carregar barbearia");
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
 
   useEffect(() => {
-    fetchShop();
-  }, [fetchShop]);
+    const fetchShopAndServices = async () => {
+      try {
+        const { slug } = await params;
+        const shopRes = await fetch(`/api/shops/${slug}`);
+        const shopData = await shopRes.json();
+        if (shopRes.ok) {
+          setShop(shopData);
+          // Buscar serviços cadastrados
+          const servicesRes = await fetch(`/api/shops/${slug}/services`);
+          const servicesData = await servicesRes.json();
+          setServices(servicesData.services || []);
+        } else {
+          setErrorMsg(shopData.error);
+        }
+      } catch {
+        setErrorMsg("Erro ao carregar barbearia");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShopAndServices();
+  }, [params]);
+
+  // useEffect(() => {
+  //   fetchShopAndServices();
+  // }, [fetchShopAndServices]);
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
@@ -165,7 +203,12 @@ export default function ShopPage({ params }: ShopPageProps) {
       <CardDescription>Rápido e fácil, sem complicações.</CardDescription>
     </CardHeader>
     <CardContent>
-      <AppointmentForm shop={shop} />
+      <AppointmentForm
+        shop={shop}
+        services={services}
+        defaultServices={DEFAULT_SERVICES}
+        defaultDuration={shop?.serviceDuration || 30}
+      />
     </CardContent>
   </Card>
 

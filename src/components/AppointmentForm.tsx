@@ -37,12 +37,16 @@ interface Service {
   price: number;
   duration: number;
 }
-
 interface AppointmentFormProps {
   shop: Shop;
+  services: Service[];
+  defaultServices: { name: string }[];
+  defaultDuration: number;
+  // ...other props if needed
 }
 
-export function AppointmentForm({ shop }: AppointmentFormProps) {
+export function AppointmentForm({ shop, services: initialServices, defaultServices, defaultDuration }: AppointmentFormProps) {
+  const [services, setServices] = useState<Service[]>(initialServices || []);
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState("");
   const [clientName, setClientName] = useState("");
@@ -54,11 +58,11 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
   const [showTracking, setShowTracking] = useState(false);
   const [checkingInitial, setCheckingInitial] = useState(true);
 
-  const [services, setServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [haircutStyle, setHaircutStyle] = useState("");
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
+  const [customServices, setCustomServices] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -66,7 +70,7 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         const response = await fetch(`/api/shops/${shop.slug}/services`);
         const data = await response.json();
         if (response.ok) {
-          setServices(data.services || data);
+         setServices(data.services || data);
         }
       } catch (error) {
         console.error("Failed to fetch services:", error);
@@ -423,7 +427,7 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         </p>
       </div>
 
-      {services.length > 0 ? (
+      {services.length > 0 && (
         <div className="space-y-4">
           <Label>Serviços</Label>
           {services.map((service) => (
@@ -442,11 +446,51 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
             </div>
           ))}
         </div>
-      ) : (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            Nenhum serviço disponível no momento. Entre em contato com a barbearia.
+      )}
+      {services.length === 0 && (
+        <div className="p-6 border border-gray-200 rounded-lg bg-white text-center space-y-4">
+          <p className="text-base text-gray-700 font-medium">
+            Não existem serviços pré-definidos pelo barbeiro.<br />
+            <span className="text-gray-500 font-normal">Adicione o serviço que você deseja abaixo.</span>
           </p>
+          <div className="max-w-xs mx-auto">
+            <Select
+              value=""
+              onValueChange={(name: string) => setCustomServices([...customServices, name])}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                {defaultServices
+                  .map((s: { name: string }) => s.name)
+                  .filter((name: string) => !customServices.includes(name))
+                  .map((name: string) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {customServices.length > 0 && (
+            <div className="flex flex-col gap-2 mt-2">
+              {customServices.map((name: string) => (
+                <div key={name} className="flex items-center justify-between p-2 rounded bg-gray-50 border border-gray-200">
+                  <span className="text-sm text-gray-700">{name}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-600 hover:bg-red-100"
+                    onClick={() => setCustomServices(customServices.filter((n) => n !== name))}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -525,12 +569,13 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
           </p>
         )}
       </div>
-
+        {services.length > 0 && (
       <div className="p-4 bg-gray-100 rounded-md">
         <p>Total: R$ {totalPrice.toFixed(2)}</p>
         <p>Duração: {totalDuration} minutos</p>
       </div>
-
+      )}
+      
       {message && (
         <div
           className={`p-4 rounded-md ${
@@ -546,9 +591,9 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
       <Button 
         type="submit" 
         className="w-full" 
-        disabled={loading || services.length === 0}
+        disabled={loading || (services.length === 0 && customServices.length === 0)}
       >
-        {loading ? "Agendando..." : services.length === 0 ? "Nenhum serviço disponível" : "Confirmar Agendamento"}
+        {loading ? "Agendando..." : "Confirmar Agendamento"}
       </Button>
     </form>
   );
