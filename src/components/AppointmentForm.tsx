@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,13 @@ interface Shop {
   serviceDuration: number;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+}
+
 interface AppointmentFormProps {
   shop: Shop;
 }
@@ -46,15 +54,49 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
   const [showTracking, setShowTracking] = useState(false);
   const [checkingInitial, setCheckingInitial] = useState(true);
 
-  // Função para formatar telefone
+  const [services, setServices] = useState<Service[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [haircutStyle, setHaircutStyle] = useState("");
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(`/api/shops/${shop.slug}/services`);
+        const data = await response.json();
+        if (response.ok) {
+          setServices(data.services || data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch services:", error);
+      }
+    };
+    fetchServices();
+  }, [shop.slug]);
+
+  useEffect(() => {
+    const calculateTotals = () => {
+      const selected = services.filter((s) => selectedServices.includes(s.id));
+      const price = selected.reduce((acc, s) => acc + s.price, 0);
+      const duration = selected.reduce((acc, s) => acc + s.duration, 0);
+      setTotalPrice(price);
+      setTotalDuration(duration);
+    };
+    calculateTotals();
+  }, [selectedServices, services]);
+
+  const handleServiceChange = (serviceId: string) => {
+    setSelectedServices((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
   const formatPhone = (value: string) => {
-    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, "");
-
-    // Limita a 11 dígitos (DDD + 9 dígitos)
     if (numbers.length > 11) return value.slice(0, 11);
-
-    // Formata o telefone
     if (numbers.length <= 2) {
       return numbers;
     } else if (numbers.length <= 6) {
@@ -70,13 +112,11 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
     }
   };
 
-  // Função para lidar com mudança no telefone
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setClientPhone(formatted);
   };
 
-  // Função para obter apenas números do telefone
   const getPhoneNumbers = (phone: string) => {
     return phone.replace(/\D/g, "");
   };
@@ -86,25 +126,16 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
 
     try {
       const dateString = date.toISOString().split("T")[0];
-      console.log(`Buscando horários para data: ${dateString}`);
       const response = await fetch(
         `/api/shops/${shop.slug}/availability?date=${dateString}`
       );
       const data = await response.json();
 
-      console.log(`Resposta da API:`, data);
-
       if (response.ok) {
-        console.log(`Horários disponíveis recebidos: ${data.availableSlots}`);
-        console.log(`Horários ocupados: ${data.bookedTimes}`);
         setAvailableSlots(data.availableSlots || []);
         setTime("");
-        console.log(
-          `Horários disponíveis definidos no estado: ${data.availableSlots}`
-        );
       } else {
         setMessage(data.error);
-        console.error(`Erro da API: ${data.error}`);
       }
     } catch (error) {
       console.error("Erro ao buscar horários:", error);
@@ -112,18 +143,15 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
     }
   }, [date, shop.slug]);
 
-  // Buscar horários disponíveis quando a data muda
   useEffect(() => {
     if (date) {
       fetchAvailableSlots();
     }
   }, [date, fetchAvailableSlots]);
 
-  // Verificação inicial para ver se já tem agendamento
   useEffect(() => {
     const checkInitialAppointment = async () => {
       try {
-        // Verificar telefones salvos no localStorage
         const savedPhones = JSON.parse(
           localStorage.getItem("appointmentPhones") || "[]"
         );
@@ -170,7 +198,12 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
       return;
     }
 
-    // Verificar se já existe agendamento para este telefone
+    if (selectedServices.length === 0) {
+      setMessage("Selecione pelo menos um serviço");
+      setLoading(false);
+      return;
+    }
+
     try {
       const phoneNumbers = getPhoneNumbers(clientPhone);
       const checkResponse = await fetch(
@@ -197,7 +230,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
       console.error("Erro ao verificar agendamento:", error);
     }
 
-    // Validar formato do telefone
     const phoneNumbers = getPhoneNumbers(clientPhone);
     if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
       setMessage("Telefone deve ter 10 ou 11 dígitos (com DDD)");
@@ -205,7 +237,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
       return;
     }
 
-    // Verificar se não é um email
     if (clientPhone.includes("@")) {
       setMessage(
         "Por favor, use apenas números de telefone. Emails não são aceitos."
@@ -226,13 +257,14 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
           clientContact: getPhoneNumbers(clientPhone),
           date: date.toISOString().split("T")[0],
           time,
+          selectedServices,
+          haircutStyle,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Salvar telefone no localStorage para futuras verificações (se disponível)
         try {
           const phoneNumbers = getPhoneNumbers(clientPhone);
           const savedPhones = JSON.parse(
@@ -246,7 +278,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
             );
           }
 
-          // Salvar agendamento recente para esta barbearia específica
           const recentAppointments = JSON.parse(
             localStorage.getItem(`recentAppointments_${shop.slug}`) || "[]"
           );
@@ -257,7 +288,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
           };
           recentAppointments.push(newAppointment);
 
-          // Manter apenas os últimos 5 agendamentos
           if (recentAppointments.length > 5) {
             recentAppointments.splice(0, recentAppointments.length - 5);
           }
@@ -267,13 +297,11 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
             JSON.stringify(recentAppointments)
           );
         } catch (e) {
-          // localStorage não disponível (guia anônima)
           console.log(
             "localStorage não disponível, agendamento salvo apenas no servidor"
           );
         }
 
-        // Mostrar tracking imediatamente
         setExistingAppointment({
           trackingUrl: data.trackingUrl,
           appointment: {
@@ -283,20 +311,17 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         });
         setShowTracking(true);
 
-        const bc = new BroadcastChannel("appointments-sync")
-        console.log("⏩ Enviando mensagem de sincronização:", {
-          type: "new_appointment",
-          shopSlug: shop.slug,
-        })
-        bc.postMessage({ type: "new_appointment", shopSlug: shop.slug })
-        bc.close()
-        
-        
+        const bc = new BroadcastChannel("appointments-sync");
+        bc.postMessage({ type: "new_appointment", shopSlug: shop.slug });
+        bc.close();
+
         setClientName("");
         setClientPhone("");
         setDate(undefined);
         setTime("");
         setAvailableSlots([]);
+        setSelectedServices([]);
+        setHaircutStyle("");
       } else {
         setMessage(data.error);
       }
@@ -307,7 +332,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
     }
   };
 
-  // Mostrar loading enquanto verifica inicialmente
   if (checkingInitial) {
     return (
       <div className="space-y-6">
@@ -318,7 +342,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
     );
   }
 
-  // Mostrar apenas tracking se já tem agendamento
   if (existingAppointment && !showTracking) {
     return (
       <div className="space-y-6">
@@ -332,9 +355,9 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
           </p>
 
           <Button
-              onClick={() => {
-                window.location.href = existingAppointment.trackingUrl;
-              }}
+            onClick={() => {
+              window.location.href = existingAppointment.trackingUrl;
+            }}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -345,7 +368,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
     );
   }
 
-  // Mostrar tracking após agendamento
   if (showTracking && existingAppointment) {
     return (
       <div className="space-y-6">
@@ -360,9 +382,9 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
           </p>
 
           <Button
-              onClick={() => {
-                window.location.href = existingAppointment.trackingUrl;
-              }}
+            onClick={() => {
+              window.location.href = existingAppointment.trackingUrl;
+            }}
             className="bg-green-600 hover:bg-green-700"
           >
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -372,12 +394,6 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
       </div>
     );
   }
-
-  // Formulário normal para novo agendamento
-  console.log(
-    `Renderizando formulário com ${availableSlots.length} horários disponíveis:`,
-    availableSlots
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -407,6 +423,49 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         </p>
       </div>
 
+      {services.length > 0 ? (
+        <div className="space-y-4">
+          <Label>Serviços</Label>
+          {services.map((service) => (
+            <div key={service.id} className="flex items-center space-x-2">
+              <Checkbox
+                id={service.id}
+                checked={selectedServices.includes(service.id)}
+                onCheckedChange={() => handleServiceChange(service.id)}
+              />
+              <label
+                htmlFor={service.id}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {service.name} - R$ {service.price.toFixed(2)} ({service.duration} min)
+              </label>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            Nenhum serviço disponível no momento. Entre em contato com a barbearia.
+          </p>
+        </div>
+      )}
+
+      {/* {services.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="haircutStyle">Estilo de Corte (Opcional)</Label>
+          <Select value={haircutStyle} onValueChange={setHaircutStyle}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um estilo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fade">Fade</SelectItem>
+              <SelectItem value="classic">Clássico</SelectItem>
+              <SelectItem value="buzz">Buzz Cut</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )} */}
+
       <div className="space-y-2">
         <Label>Data</Label>
         <Popover>
@@ -429,7 +488,7 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
               initialFocus
               disabled={(date) => {
                 const today = new Date();
-                today.setHours(0, 0, 0, 0); // Zera a hora
+                today.setHours(0, 0, 0, 0);
                 return date < today;
               }}
             />
@@ -467,6 +526,11 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         )}
       </div>
 
+      <div className="p-4 bg-gray-100 rounded-md">
+        <p>Total: R$ {totalPrice.toFixed(2)}</p>
+        <p>Duração: {totalDuration} minutos</p>
+      </div>
+
       {message && (
         <div
           className={`p-4 rounded-md ${
@@ -479,9 +543,14 @@ export function AppointmentForm({ shop }: AppointmentFormProps) {
         </div>
       )}
 
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Agendando..." : "Confirmar Agendamento"}
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={loading || services.length === 0}
+      >
+        {loading ? "Agendando..." : services.length === 0 ? "Nenhum serviço disponível" : "Confirmar Agendamento"}
       </Button>
     </form>
   );
 }
+

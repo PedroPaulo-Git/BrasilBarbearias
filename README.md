@@ -10,6 +10,8 @@ Um SaaS MVP completo para barbearias gerenciarem agendamentos online. Desenvolvi
 - ✅ Criação de barbearias com configuração de horários
 - ✅ Visualização de agendamentos
 - ✅ Páginas públicas personalizadas para cada barbearia
+- ✅ **Novo:** Gerenciamento de serviços com preço e duração
+- ✅ **Novo:** Bloqueio de horários flexíveis e recorrentes
 
 ### Para Clientes
 - ✅ Listagem pública de barbearias
@@ -17,6 +19,8 @@ Um SaaS MVP completo para barbearias gerenciarem agendamentos online. Desenvolvi
 - ✅ Agendamento online com seleção de data e horário
 - ✅ Validação de disponibilidade em tempo real
 - ✅ Confirmação de agendamento
+- ✅ **Novo:** Seleção de múltiplos serviços
+- ✅ **Novo:** Seleção de estilo de corte
 
 ## 🛠️ Stack Tecnológica
 
@@ -269,6 +273,10 @@ Esta seção resume as principais funcionalidades e marcos alcançados no projet
 - [x] **Gestão de Barbearias**: Proprietários podem criar, editar e remover suas barbearias através de um dashboard.
 - [x] **Páginas Públicas para Barbearias**: Cada barbearia possui uma página pública e personalizada para receber agendamentos.
 - [x] **Autenticação de Usuários**: Sistema de login e registro para proprietários de barbearias usando NextAuth.
+- [x] **Gerenciamento de Serviços**: Os proprietários de barbearias agora podem adicionar, editar e remover serviços, cada um com seu próprio nome, preço e duração.
+- [x] **Seleção de Serviços Múltiplos**: Os clientes podem selecionar um ou mais serviços ao fazer um agendamento, e o sistema calculará automaticamente o preço e a duração total.
+- [x] **Seleção de Estilo de Corte**: Os clientes podem escolher um estilo de corte de cabelo (Fade, Clássico ou Buzz) ao agendar.
+- [x] **Bloqueio de Horário Flexível e Recorrente**: Os proprietários de barbearias podem bloquear horários específicos em seus calendários, com a opção de torná-los recorrentes (diariamente ou semanalmente).
 
 ### Modelo SaaS e Pagamentos
 - [x] **Sistema de Planos e Assinaturas**: Implementação de um modelo SaaS com diferentes níveis de planos (Básico, Intermediário, Avançado).

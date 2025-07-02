@@ -4,6 +4,7 @@ import { shopController } from '../controllers/shopController';
 import { appointmentController } from '../controllers/appointmentController';
 import { authMiddleware } from '../middlewares/auth';
 import { paymentRoutes } from './paymentRoutes'; // Importando as novas rotas
+import serviceRoutes from './serviceRoutes';
 
 const router = express.Router();
 
@@ -20,6 +21,9 @@ router.post('/appointments', appointmentController.createAppointment.bind(appoin
 
 // Rotas de Pagamento (centralizadas)
 router.use('/payments', paymentRoutes);
+
+// Rotas de Serviços
+router.use('/', serviceRoutes);
 
 // Rotas protegidas (requerem autenticação)
 router.get('/shops', authMiddleware, shopController.getUserShops.bind(shopController));

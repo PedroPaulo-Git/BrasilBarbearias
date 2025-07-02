@@ -163,7 +163,11 @@ export default function DashboardPage() {
           </div>
           <Button
             onClick={() => setShowForm(true)}
-            disabled={!plan || plan.status !== 'active' || (plan.plan && shops.length >= plan.plan.shopLimit)}
+            disabled={
+              !plan ||
+              plan.status !== 'active' ||
+              (plan.shopLimit && shops.length >= plan.shopLimit)
+            }
             className="mt-4 md:mt-0"
           >
             <Plus className="mr-2 h-4 w-4" />

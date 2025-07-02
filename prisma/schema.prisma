@@ -30,41 +30,56 @@ model User {
 }
 
 model Shop {
-  id           String        @id @default(cuid())
-  name         String
-  slug         String        @unique
-  address      String?
-  openTime     String        // Format: "HH:MM"
-  closeTime    String        // Format: "HH:MM"
-  serviceDuration Int        @default(60) // Duration in minutes
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  address         String?
+  openTime        String        // Format: "HH:MM"
+  closeTime       String        // Format: "HH:MM"
+  serviceDuration Int           @default(60) // Duration in minutes
+  description     String?
+  galleryImages   String[]      @default([])
+  instagramUrl    String?
+  whatsappUrl     String?
+  mapUrl          String?
+  rating          Float?        // Admin-set rating
+  ownerId         String
+  owner           User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   
-  // New optional fields
-  description   String?
-  galleryImages String[]      @default([])
-  instagramUrl  String?
-  whatsappUrl   String?
-  mapUrl        String?
-  rating        Float?        // Admin-set rating
-
-  ownerId      String
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  blockedTimes BlockedTime[]
+  services        Service[]
+  appointments    Appointment[]
+  blockedTimes    BlockedTime[]
 
   @@map("shops")
 }
 
+model Service {
+  id        String   @id @default(cuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name      String   // "Hair", "Beard", "Combo"
+  price     Float
+  duration  Int      // in minutes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("services")
+}
+
 model Appointment {
-  id           String   @id @default(cuid())
-  shopId       String
-  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  clientName   String
-  clientContact String  // Email or phone
-  date         DateTime
-  status       String   @default("pending") // pending, confirmed, cancelled, completed
-  createdAt    DateTime @default(now())
+  id               String   @id @default(cuid())
+  shopId           String
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  clientName       String
+  clientContact    String   // Email or phone
+  date             DateTime
+  status           String   @default("pending") // pending, confirmed, cancelled, completed
+  selectedServices String[] @default([])
+  haircutStyle     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
 
   //  @@unique([shopId, date])Prevent double booking
   @@map("appointments")
@@ -97,14 +112,17 @@ model Subscription {
 }
 
 model BlockedTime {
-  id        String   @id @default(cuid())
-  shopId    String
-  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  date      DateTime // Apenas a data (sem hora)
-  startTime String   // "HH:MM"
-  endTime   String   // "HH:MM"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  date           DateTime? // Optional for recurring blocks
+  startTime      String   // "HH:MM"
+  endTime        String   // "HH:MM"
+  recurring      Boolean  @default(false)
+  recurrenceType String?  // "daily", "weekly"
+  daysOfWeek     String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("blocked_times")
 }

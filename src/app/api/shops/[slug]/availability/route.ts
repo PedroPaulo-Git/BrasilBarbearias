@@ -1,83 +1,115 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { generateTimeSlots } from "@/lib/utils"
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { generateTimeSlots } from "@/lib/utils";
+import { getDay, parseISO } from "date-fns";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: { slug: string } }
 ) {
   try {
-    const { slug } = await params
-    const { searchParams } = new URL(request.url)
-    const date = searchParams.get('date')
+    const { slug } = params;
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get("date");
 
     if (!date) {
       return NextResponse.json(
         { error: "Data é obrigatória" },
         { status: 400 }
-      )
+      );
     }
 
     const shop = await prisma.shop.findUnique({
-      where: { slug }
-    })
+      where: { slug },
+      include: { blockedTimes: true },
+    });
 
     if (!shop) {
       return NextResponse.json(
         { error: "Barbearia não encontrada" },
         { status: 404 }
-      )
+      );
     }
 
-    // Buscar agendamentos para a data
-    const startOfDay = new Date(date + 'T00:00:00.000Z')
-    const endOfDay = new Date(date + 'T23:59:59.999Z')
-
-    console.log(`Buscando agendamentos entre: ${startOfDay.toISOString()} e ${endOfDay.toISOString()}`)
+    const startOfDay = new Date(`${date}T00:00:00.000Z`);
+    const endOfDay = new Date(`${date}T23:59:59.999Z`);
 
     const appointments = await prisma.appointment.findMany({
       where: {
         shopId: shop.id,
         date: {
           gte: startOfDay,
-          lte: endOfDay
+          lte: endOfDay,
         },
         status: {
-          in: ['confirmed', 'completed'] // Só bloqueia horários confirmados ou realizados
-        }
+          in: ["confirmed", "completed"],
+        },
       },
       select: {
         date: true,
-        status: true
-      }
-    })
+      },
+    });
 
-    console.log(`Agendamentos encontrados: ${appointments.length}`)
-    appointments.forEach(apt => {
-      console.log(`- ${apt.date.toISOString()} (${apt.status})`)
-    })
+    const bookedTimes = appointments.map((apt) => {
+      const hours = apt.date.getUTCHours().toString().padStart(2, "0");
+      const minutes = apt.date.getUTCMinutes().toString().padStart(2, "0");
+      return `${hours}:${minutes}`;
+    });
 
-    // Gerar todos os horários disponíveis
     const allTimeSlots = generateTimeSlots(
       shop.openTime,
       shop.closeTime,
       shop.serviceDuration
-    )
+    );
 
-    // Filtrar horários ocupados - comparar HH:MM
-    const bookedTimes = appointments.map((apt: { date: Date }) => {
-      const hours = apt.date.getHours().toString().padStart(2, '0')
-      const minutes = apt.date.getMinutes().toString().padStart(2, '0')
-      return `${hours}:${minutes}`
-    })
+    // New logic for blocked times
+    const requestedDate = parseISO(date);
+    const dayOfWeek = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ][getDay(requestedDate)];
 
-    console.log(`Data: ${date}`)
-    console.log(`Horários ocupados: ${bookedTimes}`)
-    console.log(`Todos os horários: ${allTimeSlots}`)
+    const blockedRanges = shop.blockedTimes
+      .filter((block) => {
+        if (!block.recurring) {
+          // One-time block
+          return (
+            block.date &&
+            new Date(block.date).toDateString() === requestedDate.toDateString()
+          );
+        }
+        // Recurring block
+        if (block.recurrenceType === "daily") return true;
+        if (
+          block.recurrenceType === "weekly" &&
+          block.daysOfWeek.includes(dayOfWeek)
+        ) {
+          return true;
+        }
+        return false;
+      })
+      .map((block) => ({ start: block.startTime, end: block.endTime }));
 
-    const availableSlots = allTimeSlots.filter(slot => !bookedTimes.includes(slot))
+    const availableSlots = allTimeSlots.filter((slot) => {
+      if (bookedTimes.includes(slot)) return false;
 
-    console.log(`Horários disponíveis: ${availableSlots}`)
+      // Check if the slot is within a blocked range
+      const slotDate = new Date(`${date}T${slot}:00`);
+      for (const range of blockedRanges) {
+        const start = new Date(`${date}T${range.start}:00`);
+        const end = new Date(`${date}T${range.end}:00`);
+        if (slotDate >= start && slotDate < end) {
+          return false;
+        }
+      }
+
+      return true;
+    });
 
     return NextResponse.json({
       availableSlots,
@@ -86,14 +118,14 @@ export async function GET(
         id: shop.id,
         openTime: shop.openTime,
         closeTime: shop.closeTime,
-        serviceDuration: shop.serviceDuration
-      }
-    })
+        serviceDuration: shop.serviceDuration,
+      },
+    });
   } catch (error) {
-    console.error("Erro ao verificar disponibilidade:", error)
+    console.error("Erro ao verificar disponibilidade:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
-    )
+    );
   }
 } 

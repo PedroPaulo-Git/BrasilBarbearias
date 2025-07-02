@@ -1,5 +1,4 @@
-"use client";
-
+'use client'
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -67,7 +66,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// import { useToast } from "@/components/ui/use-toast";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -85,6 +83,7 @@ import {
   SelectContent,
   SelectItem
 } from "@/components/ui/select";
+import { ServiceManager } from "@/components/ServiceManager";
 
 interface Appointment {
   id: string;
@@ -125,9 +124,7 @@ export default function ManageShopPage({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  // const { toast } = useToast();
   const [shop, setShop] = useState<Shop | null>(null);
-  // const [shopId, setShopId] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +137,7 @@ export default function ManageShopPage({
   >("all");
   const [showCancelled, setShowCancelled] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "appointments" | "stats" | "settings"
+    "appointments" | "stats" | "settings" | "services"
   >("appointments");
 
   // States for profile editing
@@ -176,11 +173,13 @@ export default function ManageShopPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const submitted = useRef(false);
 
-  const [showSimpleModal, setShowSimpleModal] = useState(false);
-  const [simpleDate, setSimpleDate] = useState<Date | undefined>();
-  const [simpleTime, setSimpleTime] = useState("");
-  const [isManual, setIsManual] = useState(false);
-  const [simpleReason, setSimpleReason] = useState("");
+  const [showBlockingModal, setShowBlockingModal] = useState(false);
+  const [blockingDate, setBlockingDate] = useState<Date | undefined>();
+  const [blockingStartTime, setBlockingStartTime] = useState("");
+  const [blockingEndTime, setBlockingEndTime] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState("daily");
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>([]);
 
   const timeSlots = useMemo(() => {
     if (!shop) return [];
@@ -700,40 +699,39 @@ const performanceMetrics = {
     }
   };
 
-  const generateImpossiblePhone = () => {
-    // Sempre começa com 99999 e termina com 6 dígitos aleatórios
-    const random = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
-    return `99999${random}`; // Exemplo: 99999123456
-  };
-  const handleSimpleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleBlockTimeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!shop || !simpleDate || !simpleTime) {
-      toast.error("Por favor, selecione uma data e hora.");
+    if (!shop || !blockingStartTime || !blockingEndTime) {
+      toast.error("Por favor, preencha todos os campos de horário.");
       return;
     }
 
-    const name = isManual ? "Presencial" : "Horário reservado";
-    const dummyPhone = generateImpossiblePhone();
     try {
-      await fetch("/api/appointments", {
+      await fetch(`/api/shops/${shop.id}/blocking`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopId: shop.id,
-          clientName: name,
-          clientContact: dummyPhone,
-          date: format(simpleDate, "yyyy-MM-dd"),
-          time: simpleTime,
+          date: blockingDate ? format(blockingDate, "yyyy-MM-dd") : null,
+          startTime: blockingStartTime,
+          endTime: blockingEndTime,
+          recurring: isRecurring,
+          recurrenceType: isRecurring ? recurrenceType : null,
+          daysOfWeek: isRecurring && recurrenceType === 'weekly' ? daysOfWeek : [],
         }),
       });
-      toast.success("Agendamento rápido criado com sucesso!");
-      setShowSimpleModal(false);
-      setSimpleDate(undefined);
-      setSimpleTime("");
-      fetchAppointmentsOnly(shop.id); // Atualiza lista
+      toast.success("Horário bloqueado com sucesso!");
+      setShowBlockingModal(false);
+      setBlockingDate(undefined);
+      setBlockingStartTime("");
+      setBlockingEndTime("");
+      setIsRecurring(false);
+      setRecurrenceType("daily");
+      setDaysOfWeek([]);
+      fetchAppointmentsOnly(shop.id);
     } catch (error) {
       console.error("Erro ao bloquear horário:", error);
-      toast.error("Ocorreu um erro ao criar o agendamento.");
+      toast.error("Ocorreu um erro ao bloquear o horário.");
     }
   };
 
@@ -830,6 +828,14 @@ const performanceMetrics = {
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Estatísticas
+          </Button>
+          <Button
+            variant={activeTab === "services" ? "default" : "outline"}
+            onClick={() => setActiveTab("services")}
+            className="justify-start sm:justify-center cursor-pointer"
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            Serviços
           </Button>
           <Button
             variant={activeTab === "settings" ? "default" : "outline"}
@@ -1129,7 +1135,7 @@ const performanceMetrics = {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">Filtrar Período:</span>
+                <span className="text-sm font-medium">Período:</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -1283,6 +1289,12 @@ const performanceMetrics = {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {activeTab === "services" && (
+          <div className="space-y-6">
+            <ServiceManager shopId={shop?.slug || ""} />
           </div>
         )}
 
@@ -1694,35 +1706,34 @@ const performanceMetrics = {
             <Card>
   <CardHeader>
     <CardTitle className="text-lg font-semibold">
-      Criar Cliente Manual ou Bloqueio
+      Criar Bloqueio de Horário
     </CardTitle>
     <p className="text-sm text-muted-foreground">
-      Selecione a data, horário e o tipo de reserva.
+      Selecione a data, horário e o tipo de bloqueio.
     </p>
   </CardHeader>
   <CardContent>
     <Button
-      onClick={() => setShowSimpleModal(true)}
+      onClick={() => setShowBlockingModal(true)}
       className="w-full bg-primary text-white hover:bg-primary/90"
     >
-      + Novo Bloqueio ou Cliente Manual
+      + Novo Bloqueio
     </Button>
   </CardContent>
 </Card>
 
-<Dialog open={showSimpleModal} onOpenChange={setShowSimpleModal}>
+<Dialog open={showBlockingModal} onOpenChange={setShowBlockingModal}>
   <DialogContent className="max-w-md">
     <DialogHeader>
       <DialogTitle className="text-lg">
-        Novo Agendamento Rápido
+        Novo Bloqueio de Horário
       </DialogTitle>
       <p className="text-sm text-muted-foreground">
-        Selecione a data, horário e tipo de entrada.
+        Selecione a data, horário e tipo de bloqueio.
       </p>
     </DialogHeader>
 
-    <form onSubmit={handleSimpleSubmit} className="space-y-4">
-      {/* Seletor de Data */}
+    <form onSubmit={handleBlockTimeSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label>Data</Label>
         <Popover>
@@ -1732,19 +1743,18 @@ const performanceMetrics = {
               className="w-full justify-start text-left font-normal"
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {simpleDate
-                ? format(simpleDate, "PPP", { locale: ptBR })
+              {blockingDate
+                ? format(blockingDate, "PPP", { locale: ptBR })
                 : "Selecione uma data"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
           <Calendar
               mode="single"
-              selected={simpleDate}
-              onSelect={setSimpleDate}
+              selected={blockingDate}
+              onSelect={setBlockingDate}
               initialFocus
               disabled={(date: Date) => {
-                // Bloqueia datas antes de hoje (considerando só a data, sem hora)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 return date < today;
@@ -1754,51 +1764,53 @@ const performanceMetrics = {
         </Popover>
       </div>
 
-      {/* Seletor de Hora */}
-      <div className="space-y-2">
-        <Label>Horário</Label>
-        {timeSlots.length > 0 ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 rounded-md border">
-            {timeSlots.map((time) => (
-              <Button
-                key={time}
-                type="button"
-                variant={simpleTime === time ? "default" : "outline"}
-                onClick={() => setSimpleTime(time)}
-                className="w-full"
-              >
-                {time}
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-muted-foreground text-center p-4 bg-secondary rounded-md">
-            Configure os horários e duração do atendimento nas configurações
-            para ver os horários.
-          </div>
-        )}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startTime">Início</Label>
+          <Input id="startTime" type="time" value={blockingStartTime} onChange={(e) => setBlockingStartTime(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="endTime">Fim</Label>
+          <Input id="endTime" type="time" value={blockingEndTime} onChange={(e) => setBlockingEndTime(e.target.value)} />
+        </div>
       </div>
 
-      {/* Toggle entre Cliente Manual e Bloqueio */}
-      <div className="space-y-2">
-        <Label>Tipo de Agendamento</Label>
-        <Select
-          value={isManual ? "manual" : "bloqueio"}
-          onValueChange={(value) => setIsManual(value === "manual")}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="manual">Cliente Presencial</SelectItem>
-            <SelectItem value="bloqueio">Bloqueio de Agenda</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-center space-x-2">
+        <Checkbox id="recurring" checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
+        <Label htmlFor="recurring">Bloqueio Recorrente</Label>
       </div>
+
+      {isRecurring && (
+        <div className="space-y-4">
+          <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tipo de recorrência" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Diariamente</SelectItem>
+              <SelectItem value="weekly">Semanalmente</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {recurrenceType === 'weekly' && (
+            <div className="space-y-2">
+              <Label>Dias da Semana</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[ { id: 'monday', label: 'Seg' }, { id: 'tuesday', label: 'Ter' }, { id: 'wednesday', label: 'Qua' }, { id: 'thursday', label: 'Qui' }, { id: 'friday', label: 'Sex' }, { id: 'saturday', label: 'Sáb' }, { id: 'sunday', label: 'Dom' }].map(day => (
+                  <div key={day.id} className="flex items-center space-x-2">
+                    <Checkbox id={day.id} checked={daysOfWeek.includes(day.id)} onCheckedChange={() => setDaysOfWeek(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])} />
+                    <Label htmlFor={day.id}>{day.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <DialogFooter>
         <Button type="submit" className="w-full">
-          Confirmar Agendamento
+          Confirmar Bloqueio
         </Button>
       </DialogFooter>
     </form>
