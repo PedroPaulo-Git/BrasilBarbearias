@@ -40,6 +40,7 @@ import {
   Calendar as CalendarIcon,
   Phone,
   LockKeyhole,
+  Scissors,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -960,13 +961,7 @@ const performanceMetrics = {
                   >
                     Hoje
                   </Button>
-                  <Button
-                    variant={dateFilter === "yesterday" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setDateFilter("yesterday")}
-                  >
-                    Ontem
-                  </Button>
+                  
                   <Button
                     variant={dateFilter === "week" ? "default" : "outline"}
                     size="sm"
@@ -987,6 +982,13 @@ const performanceMetrics = {
                     onClick={() => setDateFilter("all")}
                   >
                     Todos os Dias
+                  </Button>
+                  <Button
+                    variant={dateFilter === "yesterday" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDateFilter("yesterday")}
+                  >
+                    Ontem
                   </Button>
                 </div>
               </div>
@@ -1036,18 +1038,35 @@ const performanceMetrics = {
                                   </Badge>
                                 )}
                               </div>
-                             
-                                {isManual && appointment.status === "completed" && (
-                                  <Badge className="bg-green-300 text-green-900 ml-2">
-                                    Realizado
-                                  </Badge>
-                                )}
-                                {isBlocked && (
-                                  <Badge className="bg-gray-200 text-red-500 ml-2">
-                                    Horário bloqueado
-                                  </Badge>
-                                )}
+                            
+                              {/* Fim serviços selecionados */}
+                              {isManual && appointment.status === "completed" && (
+                                <Badge className="bg-green-300 text-green-900 ml-2">
+                                  Realizado
+                                </Badge>
+                              )}
+                              {isBlocked && (
+                                <Badge className="bg-gray-200 text-red-500 ml-2">
+                                  Horário bloqueado
+                                </Badge>
+                              )}
                               {!isManual && !isBlocked && getStatusBadge(appointment.status)}
+                                {/* Serviços selecionados */}
+                                {Array.isArray(appointment.service) && appointment.service.length > 0 && (
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  {appointment.service.map((serviceName, idx) => (
+                                    <span key={idx} className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded text-sm font-medium border border-slate-200">
+                                      <Scissors className="h-4 w-4 text-primary" />
+                                      {serviceName}
+                                      {/* Se quiser mostrar o preço, busque no array de serviços cadastrados (opcional) */}
+                                      {/* Exemplo: */}
+                                      {/* {services.find(s => s.name === serviceName)?.price && (
+                                        <span className="ml-1 text-xs text-muted-foreground">R$ {services.find(s => s.name === serviceName)?.price.toFixed(2)}</span>
+                                      )} */}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">

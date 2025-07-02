@@ -55,7 +55,7 @@ export async function GET(
       date: appointment.date.toISOString().split('T')[0],
       time: appointment.date.toTimeString().slice(0, 5),
       status: appointment.status,
-      service: 'Corte de Cabelo',
+      service: appointment.selectedServices,
       customer: {
         name: appointment.clientName,
         phone: appointment.clientContact,

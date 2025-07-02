@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 export async function POST(request: NextRequest) {
  
   try {
-    const { shopId, clientName, clientContact, date, time } = await request.json()
+    const { shopId, clientName, clientContact, date, time, selectedServices } = await request.json()
 
     // 1. Validação dos campos de entrada
     if (!shopId || !clientName || !clientContact || !date || !time) {
@@ -78,6 +78,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let selectedServiceNames: string[] = [];
+
+    if (Array.isArray(selectedServices) && selectedServices.length > 0) {
+      for (const s of selectedServices) {
+        if (typeof s === "object" && s.name) {
+          selectedServiceNames.push(s.name);
+        } else if (typeof s === "string") {
+          // Buscar o nome do serviço pelo ID
+          const service = await prisma.service.findUnique({ where: { id: s } });
+          if (service) {
+            selectedServiceNames.push(service.name);
+          }
+        }
+      }
+    } else {
+      selectedServiceNames = ["Corte de Cabelo"];
+    }
+
     // 5. Se não houver conflitos, criar o agendamento
     const newAppointment = await prisma.appointment.create({
       data: {
@@ -85,7 +103,8 @@ export async function POST(request: NextRequest) {
         clientName,
         clientContact: phoneNumbers,
         date: appointmentDate,
-        status: 'pending' // Define o status inicial como confirmado
+        status: 'pending',
+        selectedServices: selectedServiceNames,
       }
     })
 
