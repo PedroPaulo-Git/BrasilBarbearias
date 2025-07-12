@@ -3,12 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { generateTimeSlots } from "@/lib/utils";
 import { getDay, parseISO } from "date-fns";
 
+// Type for blocked time based on Prisma schema
+type BlockedTime = {
+  id: string;
+  shopId: string;
+  date: Date | null;
+  startTime: string;
+  endTime: string;
+  recurring: boolean;
+  recurrenceType: string | null;
+  daysOfWeek: string[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
 
@@ -50,7 +64,7 @@ export async function GET(
       },
     });
 
-    const bookedTimes = appointments.map((apt) => {
+    const bookedTimes = appointments.map((apt: { date: Date }) => {
       const hours = apt.date.getUTCHours().toString().padStart(2, "0");
       const minutes = apt.date.getUTCMinutes().toString().padStart(2, "0");
       return `${hours}:${minutes}`;
@@ -75,7 +89,7 @@ export async function GET(
     ][getDay(requestedDate)];
 
     const blockedRanges = shop.blockedTimes
-      .filter((block) => {
+      .filter((block: BlockedTime) => {
         if (!block.recurring) {
           // One-time block
           return (
@@ -93,7 +107,7 @@ export async function GET(
         }
         return false;
       })
-      .map((block) => ({ start: block.startTime, end: block.endTime }));
+      .map((block: BlockedTime) => ({ start: block.startTime, end: block.endTime }));
 
     const availableSlots = allTimeSlots.filter((slot) => {
       if (bookedTimes.includes(slot)) return false;

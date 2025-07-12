@@ -4,7 +4,22 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
-import { Plan, Subscription } from "@prisma/client";
+// Define types locally since they're not exported from Prisma client
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  shopLimit: number;
+};
+
+type Subscription = {
+  id: string;
+  status: string;
+  planId: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  plan?: Plan;
+};
 import { PaymentForm } from "@/components/PaymentForm";
 import { useRouter } from "next/navigation";
 import { 
@@ -54,6 +69,7 @@ export function PlansView({ plans, userSubscription }: PlansViewProps) {
       currentPeriodEnd: data.paymentEnd,
       currentPeriodStart: data.paymentStart,
       plan: {
+        id: data.planId,
         name: data.name,
         price: data.price,
         shopLimit: data.shopLimit,

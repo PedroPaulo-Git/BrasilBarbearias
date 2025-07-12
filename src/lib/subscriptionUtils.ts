@@ -1,7 +1,20 @@
 import { prisma } from "@/lib/prisma";
-import { Subscription } from "@prisma/client";
-import { useEffect, useState } from "react";
-// export const [canCreateShopAllowed, setCanCreateShopAllowed] = useState(false);
+
+// Define Subscription type locally since it's not exported from Prisma client
+type Subscription = {
+  id: string;
+  userId: string;
+  planId: string;
+  status: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  plan?: {
+    id: string;
+    name: string;
+    price: number;
+    shopLimit: number;
+  };
+};
 
 
 // useEffect(() => {
@@ -26,7 +39,7 @@ export async function getUserSubscription(
     include: { plan: true },
   });
   console.log("[getUserSubscription] result:", sub);
-  return sub;
+  return sub as any;
 }
 
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
@@ -60,7 +73,7 @@ export async function canCreateShop(userId: string): Promise<boolean> {
   }
   if (user.isAdmin) return true;
 
-  const sub = user.subscriptions.find(s => s.status === 'active');
+  const sub = user.subscriptions.find((s: any) => s.status === 'active');
   const now = new Date();
   
   if (!sub || !(sub.currentPeriodEnd && sub.currentPeriodEnd > now)) {

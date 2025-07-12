@@ -17,9 +17,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { User, KeyRound, Trash2, Edit } from "lucide-react";
-import type { Plan, Subscription as PrismaSubscription } from '@prisma/client';
+// Define types locally since they're not exported from Prisma client
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  shopLimit: number;
+};
 
-type Subscription = PrismaSubscription & { plan: Plan };
+type Subscription = {
+  id: string;
+  status: string;
+  planId: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  plan: Plan;
+};
 
 interface ProfileClientProps {
   user: {

@@ -52,5 +52,5 @@ export default async function PlansPage() {
         }
     });
 
-    return <PlansView plans={plans} userSubscription={userSubscription} />;
+    return <PlansView plans={plans} userSubscription={userSubscription as any} />;
 } 

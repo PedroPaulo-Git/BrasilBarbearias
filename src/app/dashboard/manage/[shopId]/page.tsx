@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -76,13 +76,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@radix-ui/react-popover";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
-  SelectItem
+  SelectItem,
 } from "@/components/ui/select";
 import { ServiceManager } from "@/components/ServiceManager";
 
@@ -304,12 +308,12 @@ export default function ManageShopPage({
       if (!shopId) return;
 
       // 1. Perform the full, initial data load
-      await fetchShopAndAppointmentsInitial(shopId);
+     fetchShopAndAppointmentsInitial(shopId);
 
       // 2. Set up the polling interval to only fetch appointments
       intervalId = setInterval(() => {
         fetchAppointmentsOnly(shopId);
-      }, 5000); // Poll every 5 seconds
+      }, 15000); // Poll every 5 seconds
     };
 
     initialize();
@@ -599,37 +603,38 @@ Obrigado! ✂️`,
     return appointments.filter((a) => a.status === status).length;
   };
 
-// Primeiro, filtra só os agendamentos reais (excluindo bloqueios)
-const realAppointments = statsAppointments.filter(
-  (a) =>
-    a.customer.name !== "Horário reservado" &&
-    a.customer.name !== "Horário bloqueado"
-);
+  // Primeiro, filtra só os agendamentos reais (excluindo bloqueios)
+  const realAppointments = statsAppointments.filter(
+    (a) =>
+      a.customer.name !== "Horário reservado" &&
+      a.customer.name !== "Horário bloqueado"
+  );
 
-// Agora calcula os stats só com base nesses agendamentos reais
-const stats = {
-  total: realAppointments.length,
-  confirmed: realAppointments.filter((a) => a.status === "confirmed").length,
-  pending: realAppointments.filter((a) => a.status === "pending").length,
-  cancelled: realAppointments.filter((a) => a.status === "cancelled").length,
-  completed: realAppointments.filter((a) => a.status === "completed").length,
-};
+  // Agora calcula os stats só com base nesses agendamentos reais
+  const stats = {
+    total: realAppointments.length,
+    confirmed: realAppointments.filter((a) => a.status === "confirmed").length,
+    pending: realAppointments.filter((a) => a.status === "pending").length,
+    cancelled: realAppointments.filter((a) => a.status === "cancelled").length,
+    completed: realAppointments.filter((a) => a.status === "completed").length,
+  };
 
-// Calcula as métricas com base nos agendamentos reais
-const performanceMetrics = {
-  completionRate: (stats.total > 0
-    ? (stats.completed / (stats.total - stats.cancelled - stats.pending)) * 100
-    : 0
-  ).toFixed(1),
-  confirmationRate: (stats.pending + stats.confirmed > 0
-    ? (stats.confirmed / (stats.pending + stats.confirmed)) * 100
-    : 0
-  ).toFixed(1),
-  cancellationRate: (stats.total > 0
-    ? (stats.cancelled / stats.total) * 100
-    : 0
-  ).toFixed(1),
-};
+  // Calcula as métricas com base nos agendamentos reais
+  const performanceMetrics = {
+    completionRate: (stats.total > 0
+      ? (stats.completed / (stats.total - stats.cancelled - stats.pending)) *
+        100
+      : 0
+    ).toFixed(1),
+    confirmationRate: (stats.pending + stats.confirmed > 0
+      ? (stats.confirmed / (stats.pending + stats.confirmed)) * 100
+      : 0
+    ).toFixed(1),
+    cancellationRate: (stats.total > 0
+      ? (stats.cancelled / stats.total) * 100
+      : 0
+    ).toFixed(1),
+  };
 
   const handleRemoveShop = async () => {
     setRemovingShop(true);
@@ -713,7 +718,7 @@ const performanceMetrics = {
       toast.error("Por favor, preencha todos os campos de horário.");
       return;
     }
-  
+
     try {
       // AJUSTE AQUI: Use shop.slug na URL para corresponder à rota da API
       await fetch(`/api/shops/${shop.slug}/blocking`, {
@@ -726,10 +731,11 @@ const performanceMetrics = {
           endTime: blockingEndTime,
           recurring: isRecurring,
           recurrenceType: isRecurring ? recurrenceType : null,
-          daysOfWeek: isRecurring && recurrenceType === 'weekly' ? daysOfWeek : [],
+          daysOfWeek:
+            isRecurring && recurrenceType === "weekly" ? daysOfWeek : [],
         }),
       });
-      
+
       toast.success("Horário bloqueado com sucesso!");
       setShowBlockingModal(false);
       setBlockingDate(undefined);
@@ -738,37 +744,38 @@ const performanceMetrics = {
       setIsRecurring(false);
       setRecurrenceType("daily");
       setDaysOfWeek([]);
-      
+
       // Atualiza a lista de agendamentos
       fetchAppointmentsOnly(shop.id);
-  
     } catch (error) {
       console.error("Erro ao bloquear horário:", error);
       toast.error("Ocorreu um erro ao bloquear o horário.");
     }
   };
-  
+
   const deleteSimpleAppointment = async (appointmentId: string) => {
     try {
       await fetch(`/api/appointments/${appointmentId}`, {
         method: "DELETE",
       });
-       // Remova do estado local imediatamente:
-    setAppointments((prev) => prev.filter(a => a.id !== appointmentId));
-    if (shop) fetchAppointmentsOnly(shop.id); // Atualiza do backend depois
+      // Remova do estado local imediatamente:
+      setAppointments((prev) => prev.filter((a) => a.id !== appointmentId));
+      if (shop) fetchAppointmentsOnly(shop.id); // Atualiza do backend depois
     } catch (error) {
       toast.error("Erro ao remover agendamento");
     }
   };
 
-  const handleCreateManualClient = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateManualClient = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
-  
+
     if (!shop || !manualDate || !manualTime) {
       toast.error("Por favor, selecione a data e o horário.");
       return;
     }
-  
+
     try {
       // Use shop.slug na URL para corresponder à rota da API
       const response = await fetch(`/api/shops/${shop.slug}/manual-client`, {
@@ -779,28 +786,30 @@ const performanceMetrics = {
           time: manualTime,
         }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Falha ao criar o agendamento manual.");
+        throw new Error(
+          errorData.error || "Falha ao criar o agendamento manual."
+        );
       }
-  
+
       toast.success("Cliente manual criado com sucesso!");
-      
+
       // Limpa o formulário e fecha o modal
       setShowManualClientModal(false);
       setManualDate(undefined);
       setManualTime("");
-  
+
       // Atualiza a lista de agendamentos para mostrar o novo cliente
       fetchAppointmentsOnly(shop.id);
-  
     } catch (error: any) {
       console.error("Erro ao criar cliente manual:", error);
-      toast.error(error.message || "Ocorreu um erro ao criar o cliente manual.");
+      toast.error(
+        error.message || "Ocorreu um erro ao criar o cliente manual."
+      );
     }
   };
-  
 
   if (status === "loading") {
     return <div>Carregando...</div>;
@@ -961,7 +970,7 @@ const performanceMetrics = {
                   >
                     Hoje
                   </Button>
-                  
+
                   <Button
                     variant={dateFilter === "week" ? "default" : "outline"}
                     size="sm"
@@ -1008,18 +1017,23 @@ const performanceMetrics = {
                 filteredAppointments.map((appointment) => {
                   const phone = appointment.customer.phone;
                   const isManual = appointment.customer.name === "Presencial";
-                  const isBlocked = appointment.customer.name === "Horário reservado";                  
-                
-                  const dateFormatted = format(parseISO(appointment.date), "dd/MM/yyyy", {
-                    locale: ptBR,
-                  });
-                
+                  const isBlocked =
+                    appointment.customer.name === "Horário reservado";
+
+                  const dateFormatted = format(
+                    parseISO(appointment.date),
+                    "dd/MM/yyyy",
+                    {
+                      locale: ptBR,
+                    }
+                  );
+
                   const baseCardClasses = isManual
                     ? "bg-yellow-50 border-yellow-500 border-2 shadow-none"
                     : isBlocked
                     ? "bg-red-50 border-red-300 border text-red-800 shadow-sm"
                     : "hover:shadow-md transition-shadow cursor-pointer";
-                
+
                   return (
                     <Card key={appointment.id} className={baseCardClasses}>
                       <CardContent className="p-4 sm:p-6">
@@ -1028,7 +1042,15 @@ const performanceMetrics = {
                           <div className="flex-1">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
                               <div className="flex items-center gap-2">
-                                {isBlocked ? (<><LockKeyhole className="h-4 w-4 text-muted-foreground"  /></>):(<><User className="h-4 w-4 text-muted-foreground" /></>) }        
+                                {isBlocked ? (
+                                  <>
+                                    <LockKeyhole className="h-4 w-4 text-muted-foreground" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                  </>
+                                )}
                                 <span className="font-medium">
                                   {appointment.customer.name}
                                 </span>
@@ -1038,41 +1060,52 @@ const performanceMetrics = {
                                   </Badge>
                                 )}
                               </div>
-                            
+
                               {/* Fim serviços selecionados */}
-                              {isManual && appointment.status === "completed" && (
-                                <Badge className="bg-green-300 text-green-900 ml-2">
-                                  Realizado
-                                </Badge>
-                              )}
+                              {isManual &&
+                                appointment.status === "completed" && (
+                                  <Badge className="bg-green-300 text-green-900 ml-2">
+                                    Realizado
+                                  </Badge>
+                                )}
                               {isBlocked && (
                                 <Badge className="bg-gray-200 text-red-500 ml-2">
                                   Horário bloqueado
                                 </Badge>
                               )}
-                              {!isManual && !isBlocked && getStatusBadge(appointment.status)}
-                                {/* Serviços selecionados */}
-                                {Array.isArray(appointment.service) && appointment.service.length > 0 && (
-                                <div className="flex flex-wrap gap-2 items-center">
-                                  {appointment.service.map((serviceName, idx) => (
-                                    <span key={idx} className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded text-sm font-medium border border-slate-200">
-                                      <Scissors className="h-4 w-4 text-primary" />
-                                      {serviceName}
-                                      {/* Se quiser mostrar o preço, busque no array de serviços cadastrados (opcional) */}
-                                      {/* Exemplo: */}
-                                      {/* {services.find(s => s.name === serviceName)?.price && (
+                              {!isManual &&
+                                !isBlocked &&
+                                getStatusBadge(appointment.status)}
+                              {/* Serviços selecionados */}
+                              {Array.isArray(appointment.service) &&
+                                appointment.service.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    {appointment.service.map(
+                                      (serviceName, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded text-sm font-medium border border-slate-200"
+                                        >
+                                          <Scissors className="h-4 w-4 text-primary" />
+                                          {serviceName}
+                                          {/* Se quiser mostrar o preço, busque no array de serviços cadastrados (opcional) */}
+                                          {/* Exemplo: */}
+                                          {/* {services.find(s => s.name === serviceName)?.price && (
                                         <span className="ml-1 text-xs text-muted-foreground">R$ {services.find(s => s.name === serviceName)?.price.toFixed(2)}</span>
                                       )} */}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
+                                )}
                             </div>
-                
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
                               <div className="flex items-center gap-2">
                                 <CalendarIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <span className="truncate">{dateFormatted}</span>
+                                <span className="truncate">
+                                  {dateFormatted}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -1081,12 +1114,14 @@ const performanceMetrics = {
                               {!isManual && !isBlocked && (
                                 <div className="flex items-center gap-2">
                                   <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                  <span className="truncate">{appointment.customer.phone}</span>
+                                  <span className="truncate">
+                                    {appointment.customer.phone}
+                                  </span>
                                 </div>
                               )}
                             </div>
                           </div>
-                
+
                           {/* Ações */}
                           <div className="flex flex-col sm:flex-row gap-2 lg:ml-4">
                             {/* Normal */}
@@ -1105,13 +1140,16 @@ const performanceMetrics = {
                                     WhatsApp
                                   </Button>
                                 )}
-                
+
                                 {appointment.status === "pending" && (
                                   <>
                                     <Button
                                       size="sm"
                                       onClick={() =>
-                                        handleStatusChange(appointment.id, "confirmed")
+                                        handleStatusChange(
+                                          appointment.id,
+                                          "confirmed"
+                                        )
                                       }
                                       className="bg-green-600 hover:bg-green-700"
                                     >
@@ -1122,7 +1160,10 @@ const performanceMetrics = {
                                       size="sm"
                                       variant="destructive"
                                       onClick={() =>
-                                        handleStatusChange(appointment.id, "cancelled")
+                                        handleStatusChange(
+                                          appointment.id,
+                                          "cancelled"
+                                        )
                                       }
                                     >
                                       <XCircle className="h-4 w-4 mr-1" />
@@ -1130,12 +1171,15 @@ const performanceMetrics = {
                                     </Button>
                                   </>
                                 )}
-                
+
                                 {appointment.status === "confirmed" && (
                                   <Button
                                     size="sm"
                                     onClick={() =>
-                                      handleStatusChange(appointment.id, "completed")
+                                      handleStatusChange(
+                                        appointment.id,
+                                        "completed"
+                                      )
                                     }
                                     className="bg-blue-600 hover:bg-blue-700"
                                   >
@@ -1145,7 +1189,7 @@ const performanceMetrics = {
                                 )}
                               </>
                             )}
-                
+
                             {/* Cliente Manual */}
                             {isManual && appointment.status !== "completed" && (
                               <>
@@ -1153,7 +1197,10 @@ const performanceMetrics = {
                                   size="sm"
                                   className="bg-blue-600 hover:bg-blue-700"
                                   onClick={() =>
-                                    handleStatusChange(appointment.id, "completed")
+                                    handleStatusChange(
+                                      appointment.id,
+                                      "completed"
+                                    )
                                   }
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -1162,14 +1209,16 @@ const performanceMetrics = {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => deleteSimpleAppointment(appointment.id)}
+                                  onClick={() =>
+                                    deleteSimpleAppointment(appointment.id)
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Remover
                                 </Button>
                               </>
                             )}
-                
+
                             {/* Bloqueio */}
                             {isBlocked && (
                               <>
@@ -1184,7 +1233,9 @@ const performanceMetrics = {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => deleteSimpleAppointment(appointment.id)}
+                                  onClick={() =>
+                                    deleteSimpleAppointment(appointment.id)
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Remover Bloqueio
@@ -1196,7 +1247,7 @@ const performanceMetrics = {
                       </CardContent>
                     </Card>
                   );
-                })                
+                })
               )}
             </div>
           </div>
@@ -1508,7 +1559,162 @@ const performanceMetrics = {
                 )}
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">
+                  Criar Bloqueio de Horário ou Cliente Manual
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Selecione a data, horário e o tipo de bloqueio.
+                </p>
+              </CardHeader>
+              <CardContent className="flex gap-4 items-center flex-col lg:flex-row">
+                <Button
+                  onClick={() => setShowBlockingModal(true)}
+                  className="w-full bg-primary text-white hover:bg-primary/90 lg:w-60"
+                >
+                  + Novo Bloqueio
+                </Button>
+                <Button
+                  onClick={() => setShowManualClientModal(true)}
+                  className="w-full mt-2 bg-secondary text-primary border border-primary hover:bg-primary/10 lg:w-60 lg:mt-0 "
+                >
+                  + Novo Cliente Manual
+                </Button>
+              </CardContent>
+            </Card>
 
+            <Dialog
+              open={showBlockingModal}
+              onOpenChange={setShowBlockingModal}
+            >
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-lg">
+                    Novo Bloqueio de Horário
+                  </DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione a data, horário e tipo de bloqueio.
+                  </p>
+                </DialogHeader>
+                <form onSubmit={handleBlockTimeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {blockingDate
+                            ? format(blockingDate, "PPP", { locale: ptBR })
+                            : "Selecione uma data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={blockingDate}
+                          onSelect={setBlockingDate}
+                          initialFocus
+                          disabled={(date: Date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startTime">Início</Label>
+                      <Input
+                        id="startTime"
+                        type="time"
+                        value={blockingStartTime}
+                        onChange={(e) => setBlockingStartTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endTime">Fim</Label>
+                      <Input
+                        id="endTime"
+                        type="time"
+                        value={blockingEndTime}
+                        onChange={(e) => setBlockingEndTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="recurring"
+                      checked={isRecurring}
+                      onCheckedChange={(checked) =>
+                        setIsRecurring(checked as boolean)
+                      }
+                    />
+                    <Label htmlFor="recurring">Bloqueio Recorrente</Label>
+                  </div>
+                  {isRecurring && (
+                    <div className="space-y-4">
+                      <Select
+                        value={recurrenceType}
+                        onValueChange={setRecurrenceType}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tipo de recorrência" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Diariamente</SelectItem>
+                          <SelectItem value="weekly">Semanalmente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {recurrenceType === "weekly" && (
+                        <div className="space-y-2">
+                          <Label>Dias da Semana</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { id: "monday", label: "Seg" },
+                              { id: "tuesday", label: "Ter" },
+                              { id: "wednesday", label: "Qua" },
+                              { id: "thursday", label: "Qui" },
+                              { id: "friday", label: "Sex" },
+                              { id: "saturday", label: "Sáb" },
+                              { id: "sunday", label: "Dom" },
+                            ].map((day) => (
+                              <div
+                                key={day.id}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={day.id}
+                                  checked={daysOfWeek.includes(day.id)}
+                                  onCheckedChange={() =>
+                                    setDaysOfWeek((prev) =>
+                                      prev.includes(day.id)
+                                        ? prev.filter((d) => d !== day.id)
+                                        : [...prev, day.id]
+                                    )
+                                  }
+                                />
+                                <Label htmlFor={day.id}>{day.label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <Button type="submit" className="w-full">
+                      Confirmar Bloqueio
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
             {/* Remoção em Massa */}
             <Card>
               <CardHeader>
@@ -1775,126 +1981,22 @@ const performanceMetrics = {
                 </Dialog>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">
-                  Criar Bloqueio de Horário
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Selecione a data, horário e o tipo de bloqueio.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={() => setShowBlockingModal(true)}
-                  className="w-full bg-primary text-white hover:bg-primary/90"
-                >
-                  + Novo Bloqueio
-                </Button>
-                <Button
-                  onClick={() => setShowManualClientModal(true)}
-                  className="w-full mt-2 bg-secondary text-primary border border-primary hover:bg-primary/10"
-                >
-                  + Novo Cliente Manual
-                </Button>
-              </CardContent>
-            </Card>
+      
 
-            <Dialog open={showBlockingModal} onOpenChange={setShowBlockingModal}>
+            {/* Modal de criação manual de cliente */}
+            <Dialog
+              open={showManualClientModal}
+              onOpenChange={setShowManualClientModal}
+            >
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-lg">
-                    Novo Bloqueio de Horário
+                    Novo Cliente Manual
                   </DialogTitle>
                   <p className="text-sm text-muted-foreground">
-                    Selecione a data, horário e tipo de bloqueio.
+                    Selecione apenas a data e o horário para criar um cliente
+                    manual rapidamente.
                   </p>
-                </DialogHeader>
-                <form onSubmit={handleBlockTimeSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Data</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {blockingDate
-                            ? format(blockingDate, "PPP", { locale: ptBR })
-                            : "Selecione uma data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={blockingDate}
-                          onSelect={setBlockingDate}
-                          initialFocus
-                          disabled={(date: Date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return date < today;
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="startTime">Início</Label>
-                      <Input id="startTime" type="time" value={blockingStartTime} onChange={(e) => setBlockingStartTime(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="endTime">Fim</Label>
-                      <Input id="endTime" type="time" value={blockingEndTime} onChange={(e) => setBlockingEndTime(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="recurring" checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
-                    <Label htmlFor="recurring">Bloqueio Recorrente</Label>
-                  </div>
-                  {isRecurring && (
-                    <div className="space-y-4">
-                      <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Tipo de recorrência" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Diariamente</SelectItem>
-                          <SelectItem value="weekly">Semanalmente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {recurrenceType === 'weekly' && (
-                        <div className="space-y-2">
-                          <Label>Dias da Semana</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[ { id: 'monday', label: 'Seg' }, { id: 'tuesday', label: 'Ter' }, { id: 'wednesday', label: 'Qua' }, { id: 'thursday', label: 'Qui' }, { id: 'friday', label: 'Sex' }, { id: 'saturday', label: 'Sáb' }, { id: 'sunday', label: 'Dom' }].map(day => (
-                              <div key={day.id} className="flex items-center space-x-2">
-                                <Checkbox id={day.id} checked={daysOfWeek.includes(day.id)} onCheckedChange={() => setDaysOfWeek(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])} />
-                                <Label htmlFor={day.id}>{day.label}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <DialogFooter>
-                    <Button type="submit" className="w-full">
-                      Confirmar Bloqueio
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            {/* Modal de criação manual de cliente */}
-            <Dialog open={showManualClientModal} onOpenChange={setShowManualClientModal}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="text-lg">Novo Cliente Manual</DialogTitle>
-                  <p className="text-sm text-muted-foreground">Selecione apenas a data e o horário para criar um cliente manual rapidamente.</p>
                 </DialogHeader>
                 <form onSubmit={handleCreateManualClient} className="space-y-4">
                   <div className="space-y-2">
@@ -1928,12 +2030,16 @@ const performanceMetrics = {
                   </div>
                   <div className="space-y-2">
                     <Label>Horário</Label>
-                    <Select value={manualTime} onValueChange={setManualTime} required>
+                    <Select
+                      value={manualTime}
+                      onValueChange={setManualTime}
+                      required
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um horário" />
                       </SelectTrigger>
                       <SelectContent>
-                        {timeSlots.map(slot => (
+                        {timeSlots.map((slot) => (
                           <SelectItem key={slot} value={slot}>
                             {slot}
                           </SelectItem>

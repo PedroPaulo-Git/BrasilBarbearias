@@ -35,12 +35,12 @@ export async function GET() {
     // if (!sub || !sub.plan) {
     //   return NextResponse.json({ name: "Nenhum plano", status: "sem assinatura" });
     // }
-    const activeSub = user.subscriptions.find(s => 
+        const activeSub = user.subscriptions.find((s: any) =>
       s.status === 'active' &&
       (!s.currentPeriodEnd || new Date(s.currentPeriodEnd) > new Date()) &&
       s.plan
     );
-    const pendingSub = user.subscriptions.find(s => 
+    const pendingSub = user.subscriptions.find((s: any) =>
       s.status === 'pending' &&
       s.plan
     );

@@ -11,7 +11,6 @@ async function main() {
       name: 'Básico',
       price: 19.90,
       shopLimit: 1,
-      trialDays: 7,
     },
   });
 
@@ -23,7 +22,6 @@ async function main() {
       name: 'Intermediário',
       price: 49.90,
       shopLimit: 2,
-      trialDays: 30,
     },
   });
 
@@ -35,7 +33,6 @@ async function main() {
       name: 'Avançado',
       price: 79.90,
       shopLimit: 5,
-      trialDays: 30,
     },
   });
 

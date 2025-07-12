@@ -39,7 +39,7 @@ export async function GET(
     }
 
     // Formatar dados para o frontend
-    const formattedAppointments = appointments.map(appointment => ({
+    const formattedAppointments = appointments.map((appointment: any) => ({
       id: appointment.id,
       date: appointment.date.toISOString().split('T')[0],
       time: appointment.date.toTimeString().slice(0, 5),

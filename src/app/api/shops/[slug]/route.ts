@@ -77,11 +77,11 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const { slug } = params;
+    const { slug } = await params;
     const body = await request.json();
 
     if (!session?.user?.id) {

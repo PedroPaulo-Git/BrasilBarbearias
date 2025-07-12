@@ -34,5 +34,5 @@ export default async function ProfilePage() {
     include: { plan: true }
   });
 
-  return <ProfileClient user={user} subscription={subscription} />;
+  return <ProfileClient user={user} subscription={subscription as any} />;
 } 
